@@ -1,0 +1,200 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@800;900&family=Outfit:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --animate-shimmer: shimmer 2.5s linear infinite;
+
+  @keyframes shimmer {
+    from {
+      transform: translateX(-100%) skewX(-15deg);
+    }
+    to {
+      transform: translateX(200%) skewX(-15deg);
+    }
+  }
+}
+
+:root {
+  --brand-pink: #FF4500;
+  --brand-orange: #f57b15;
+  --brand-purple: #6929c4;
+}
+
+html, body {
+  background-color: #0d0115;
+  color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Cinematic Overlays */
+.noise-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+.scanlines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 35;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0) 50%,
+    rgba(0, 0, 0, 0.1) 50%,
+    rgba(0, 0, 0, 0.1)
+  );
+  background-size: 100% 4px;
+  opacity: 0.4;
+}
+
+/* Typography Overrides */
+.font-primary {
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: -2px;
+  text-transform: uppercase;
+}
+
+.font-secondary {
+  font-family: var(--font-sans);
+}
+
+.highlight {
+  color: var(--brand-pink);
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(255, 69, 0, 0.3);
+}
+
+.hero-glow-text {
+  text-shadow: 0 0 30px rgba(255, 255, 255, 0.4), 0 0 60px rgba(255, 69, 0, 0.15);
+}
+
+.cyan-text {
+  background: linear-gradient(90deg, var(--brand-purple), var(--brand-pink), var(--brand-orange));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 15px rgba(255, 69, 0, 0.3);
+}
+
+.logo-text-glow {
+  text-shadow: 0 0 20px rgba(255, 69, 0, 0.5), 0 0 40px rgba(105, 41, 196, 0.3);
+}
+
+.grid-title-glow {
+  text-shadow: 2px 2px 10px rgba(0,0,0,0.9), 0 0 40px rgba(0,0,0,0.8);
+}
+
+.icon-cyan-glow {
+  filter: drop-shadow(0 0 8px rgba(255, 69, 0, 0.6));
+}
+
+.hero-last-phrase {
+  filter: drop-shadow(0 0 12px rgba(245, 123, 21, 0.5));
+}
+
+.hologram-wireframe {
+  background-image: radial-gradient(rgba(255, 69, 0, 0.15) 1px, transparent 1px);
+  background-size: 30px 30px;
+  mask-image: radial-gradient(circle, black, transparent 70%);
+}
+
+/* Glass Panel with Inner Tech Borders */
+.glass-panel {
+  background: rgba(15, 10, 20, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 20px rgba(255, 69, 0, 0.02), 0 10px 40px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+.glass-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 50%, rgba(255, 69, 0, 0.1) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Scanner Button Effect */
+.btn-scanner {
+  position: relative;
+  overflow: hidden;
+}
+.btn-scanner::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.4), transparent);
+  transform: skewX(-20deg);
+  transition: all 0.5s ease;
+}
+.group:hover .btn-scanner::after {
+  animation: scanSweep 1.2s infinite;
+}
+
+@keyframes scanSweep {
+  0% { left: -100%; }
+  100% { left: 200%; }
+}
+
+/* Liquid Glass Container */
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  position: relative;
+  padding: 1.5rem;
+  border-radius: 0;
+}
+
+.liquid-glass-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid transparent;
+  background: linear-gradient(90deg, 
+    rgba(255, 69, 0, 0) 0%, 
+    rgba(255, 69, 0, 0.3) 50%, 
+    rgba(255, 69, 0, 0) 100%
+  ) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: destination-out;
+  mask-composite: exclude;
+  background-size: 200% 100%;
+  animation: liquid-border-glow 4s linear infinite;
+}
+
+@keyframes liquid-border-glow {
+  0% { background-position: 200% 0%; }
+  100% { background-position: -200% 0%; }
+}
+
+@media (max-width: 768px) {
+  .hero-title { 
+    line-height: 0.95;
+    margin-bottom: 20px;
+    letter-spacing: -0.04em;
+  }
+}
+
