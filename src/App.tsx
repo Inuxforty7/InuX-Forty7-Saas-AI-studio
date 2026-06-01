@@ -34,52 +34,6 @@ export default function App() {
   const introCompletedRef = useRef(window.scrollY > 10);
 
   useEffect(() => {
-    let touchStartY = 0;
-    
-    const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches && e.touches.length > 0) {
-        touchStartY = e.touches[0].clientY;
-      }
-    };
-    
-    const preventScroll = (e: WheelEvent | TouchEvent) => {
-      let isScrollingDown = false;
-      
-      if (e instanceof WheelEvent) {
-        isScrollingDown = e.deltaY > 0;
-      } else if (e instanceof TouchEvent && e.touches && e.touches.length > 0) {
-        const touchY = e.touches[0].clientY;
-        isScrollingDown = touchStartY > touchY; // Swipe up moves touch clientY down => scrolling down
-      }
-      
-      if (!introCompletedRef.current && window.scrollY > 5 && isScrollingDown) {
-        e.preventDefault();
-      }
-    };
-
-    const preventKeys = (e: KeyboardEvent) => {
-      if (!introCompletedRef.current && window.scrollY > 5) {
-        const keys = ["Space", "ArrowDown", "PageDown", "End"];
-        if (keys.includes(e.code)) {
-          e.preventDefault();
-        }
-      }
-    };
-    
-    window.addEventListener('touchstart', handleTouchStart, { passive: true });
-    window.addEventListener('wheel', preventScroll, { passive: false });
-    window.addEventListener('touchmove', preventScroll, { passive: false });
-    window.addEventListener('keydown', preventKeys, { passive: false });
-    
-    return () => {
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('wheel', preventScroll);
-      window.removeEventListener('touchmove', preventScroll);
-      window.removeEventListener('keydown', preventKeys);
-    };
-  }, []);
-
-  useEffect(() => {
     let progress = 0;
     const interval = setInterval(() => {
       progress += Math.floor(Math.random() * 15) + 5;
@@ -165,8 +119,8 @@ export default function App() {
 
       // Timeline mestre baseada em segundos (Exatamente 1:1 com o tempo do vídeo)
       
-      const headlineItems = scrollIndicatorRef.current?.querySelectorAll('.scroll-headline-item');
-      const middleCards = scrollIndicatorRef.current?.querySelectorAll('.scroll-middle-card');
+      const headlineItems = containerRef.current?.querySelectorAll('.scroll-headline-item');
+      const middleCards = containerRef.current?.querySelectorAll('.scroll-middle-card');
 
       if (headlineItems && headlineItems.length > 0) {
         // Headline exits immediately as user starts scrolling
@@ -181,8 +135,10 @@ export default function App() {
         }, 0.2); 
       }
 
+      const uiStart = 4.2; // Exato momento de impacto/tiro onde a UI vai entrar
+
       if (middleCards && middleCards.length > 0) {
-        // Middle cards enter during the "gun draw" sequence
+        // Middle cards enter exactly at the impact of the shot and stay visible
         gsap.set(middleCards, { autoAlpha: 0, scale: 0.8, y: 50 });
         
         tl.to(middleCards, {
@@ -192,22 +148,10 @@ export default function App() {
           stagger: 0.1,
           duration: 0.8,
           ease: "back.out(1.7)"
-        }, 0.8);
-
-        // Middle cards exit before impact
-        tl.to(middleCards, {
-          autoAlpha: 0,
-          scale: 1.2,
-          filter: "blur(10px)",
-          duration: 0.4,
-          stagger: 0.05,
-          ease: "power2.in"
-        }, 3.8);
+        }, uiStart);
       }
 
       tl.to(scrollIndicatorRef.current, { pointerEvents: "none" }, 0);
-      
-      const uiStart = 4.2; // Exato momento de impacto/tiro onde a UI vai entrar
       
       tl.to(overlayRef.current, { opacity: 1, duration: 1.2, ease: "power2.inOut" }, uiStart - 0.5);
       tl.to(subtextRef.current, { y: 0, autoAlpha: 1, duration: 1.0, ease: "expo.out" }, uiStart + 0.1);
@@ -265,47 +209,45 @@ export default function App() {
         onUpdate: (self) => {
           if (!video) return;
 
-          // Se chegou ao topo absoluto, reseta tudo
+          // Esconde os indicadores de scroll assim que começa a rolar
+          if (self.progress > 0.005) {
+            gsap.to('.scroll-prompt', { opacity: 0, autoAlpha: 0, duration: 0.3, ease: "power2.out", overwrite: "auto" });
+          } else {
+            gsap.to('.scroll-prompt', { opacity: 1, autoAlpha: 1, duration: 0.4, ease: "power2.out", overwrite: "auto" });
+          }
+
+          // Se chegou ao topo absoluto (Hero)
           if (self.progress === 0) {
             playState = 0;
             video.pause();
-            gsap.to(video, { currentTime: 0, duration: 0.6, ease: "power2.out", overwrite: true });
-            gsap.to('.scroll-prompt', { opacity: 1, autoAlpha: 1, duration: 0.4, ease: "power2.out", overwrite: "auto" });
+            gsap.to(video, { currentTime: 0, duration: 0.4, ease: "power2.out", overwrite: true });
             introCompletedRef.current = false;
             return;
           }
 
-          // Esconde os indicadores de scroll assim que começa a rolar
-          if (self.progress > 0.005) {
-            gsap.to('.scroll-prompt', { opacity: 0, autoAlpha: 0, duration: 0.3, ease: "power2.out", overwrite: "auto" });
+          // Controle contínuo e controlado total (mantém vídeo pausado e controla currentTime)
+          video.pause();
+          playState = self.direction === 1 ? 1 : -1;
+
+          const duration = video.duration || 7.2;
+          const targetTime = self.progress * duration;
+
+          // Scrub super preciso e contínuo imediato no clique/arrasto
+          gsap.to(video, { 
+            currentTime: targetTime, 
+            duration: 0.25, // Resposta instantânea, sem atraso de play nativo!
+            ease: "power2.out", 
+            overwrite: "auto" 
+          });
+
+          // Se chegou muito próximo do final, ativa breathing mode
+          if (self.progress >= 0.98) {
+            introCompletedRef.current = true;
+          } else {
+            introCompletedRef.current = false;
           }
 
-          // Rolar para Baixo -> Play Nativo (Máxima fluidez e FPS alto)
-          if (self.direction === 1 && playState !== 1) {
-            playState = 1;
-            gsap.killTweensOf(video);
-            const playPromise = video.play();
-            if (playPromise !== undefined) playPromise.catch(() => {});
-            if (!reqId) syncLoop();
-          } 
-          // Rolar para Cima -> Scrub Suave Proportionado ao Scroll
-          else if (self.direction === -1) {
-            playState = -1;
-            video.pause();
-            
-            // Mapeia o currentTime diretamente ao progresso do scroll com amortecimento
-            const duration = video.duration || 6.0;
-            const targetTime = self.progress * duration;
-
-            gsap.to(video, { 
-              currentTime: targetTime, 
-              duration: 0.4, 
-              ease: "power1.out", 
-              overwrite: true 
-            });
-            
-            if (!reqId) syncLoop();
-          }
+          if (!reqId) syncLoop();
         }
       });
       
@@ -583,37 +525,7 @@ export default function App() {
                     </div>
                 </div>
 
-                    {/* Cards Clustered (Centered during scroll) */}
-                    <div className="absolute top-[85%] sm:top-[78%] md:top-[70%] lg:top-[76%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[1440px] grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 px-4 sm:px-6 md:px-8">
-                      {cards.map((card) => (
-                        <div 
-                          key={card.id}
-                          className="cursor-target scroll-middle-card relative group flex flex-col p-4 sm:p-5 md:p-6 bg-[#0a0a0a] border-[1.5px] border-[#FF4500]/60 rounded-[16px] sm:rounded-[24px] hover:bg-[#FF4500] hover:border-[#FF4500] transition-all duration-300 shadow-[0_8px_30px_rgba(255,69,0,0.15)] hover:shadow-[0_15px_40px_rgba(255,69,0,0.4)] aspect-square md:aspect-auto lg:h-[220px]"
-                        >
-                          <div className="flex flex-col h-full items-start justify-between w-full relative">
-                             {/* Desc. Shown On Hover (Desktop) / Hidden Mobile */}
-                             <div className="absolute inset-0 bg-[#FF4500] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-[16px] sm:rounded-[24px] z-[-1]"></div>
-                             
-                             <h3 className="font-mono text-[13px] sm:text-[14px] md:text-[16px] font-bold uppercase text-[#FF4500] group-hover:text-black tracking-widest text-left leading-tight w-full z-10 transition-colors">
-                               {card.title}
-                             </h3>
 
-                             <p className="font-sans text-[10px] md:text-sm text-black font-semibold text-left leading-relaxed mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute top-[40%] hidden sm:block z-10 h-10 overflow-hidden line-clamp-3">
-                               {card.desc}
-                             </p>
-                             
-                             <div className="w-full flex items-end justify-between mt-auto pt-2 z-10">
-                               <span className="font-mono text-[10px] sm:text-xs text-[#FF4500]/60 group-hover:text-black/60 font-bold transition-colors">
-                                 {card.id}
-                               </span>
-                               <div className="text-[#FF4500] group-hover:text-black transition-colors w-9 h-9 sm:w-12 sm:h-12 flex items-center justify-center">
-                                 {card.icon}
-                               </div>
-                             </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
             </div>
 
             {/* Robotic Hand Scroll Indicator - Unified for Web/Mobile - Respeitando Safe Areas */}
