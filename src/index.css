@@ -29,6 +29,7 @@ html, body {
   color: #ffffff;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
 }
 
 /* Cinematic Overlays */
@@ -190,6 +191,14 @@ html, body {
   100% { background-position: -200% 0%; }
 }
 
+.white-glow {
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.4), 0 0 40px rgba(255, 255, 255, 0.2);
+}
+
+.orange-glow {
+  text-shadow: 0 0 20px rgba(255, 69, 0, 0.5), 0 0 40px rgba(255, 69, 0, 0.3);
+}
+
 @media (max-width: 768px) {
   .hero-title { 
     line-height: 0.95;
@@ -197,4 +206,24 @@ html, body {
     letter-spacing: -0.04em;
   }
 }
+
+/* Mask removed for better readability and layout */
+@media (min-width: 768px) {
+  .behind-persona {
+    /* mask-image removed */
+  }
+}
+
+/* Liquid Node continuous organic wiggling */
+@keyframes liquid-wiggle-soft {
+  0% { transform: translate(0px, 0px) rotate(0deg) skew(0deg, 0deg) scale(1); }
+  33% { transform: translate(1.5px, -1.5px) rotate(0.15deg) skew(-0.25deg, 0deg) scale(1.002); }
+  66% { transform: translate(-1px, 1.5px) rotate(-0.1deg) skew(0.15deg, -0.1deg) scale(0.999); }
+  100% { transform: translate(0px, 0px) rotate(0deg) skew(0deg, 0deg) scale(1); }
+}
+
+.animate-liquid-wiggle {
+  animation: liquid-wiggle-soft 6s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
+}
+
 
