@@ -50,6 +50,53 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Efeito Realista Imersivo de "Pressão na Tela" ao tocar (Touchpad/Mouse/Dedo)
+  useEffect(() => {
+    const ui = uiContainerRef.current;
+    const vc = videoContainerRef.current;
+    
+    // Anima apenas o conteúdo visual para não quebrar a lógica do "fixed" no contêiner de scroll
+    const pressDown = (e: Event) => {
+      if ((e.target as HTMLElement).closest('.scroll-middle-card')) return;
+      if ((e.target as HTMLElement).closest('.terminal-modal')) return;
+      // Não queremos aplicar isso na barra de rolagem. A barra de rolagem não faz parte do document wrapper interativo,
+      // mas como o pointerdown pega na window, checamos a largura.
+      if (e instanceof PointerEvent && e.clientX > window.innerWidth - 20) return;
+
+      gsap.to([ui, vc], { 
+        scale: 0.98, 
+        filter: "brightness(0.9)",
+        duration: 0.4, 
+        ease: "power2.out",
+        transformOrigin: "center center"
+      });
+    };
+
+    const pressUp = () => {
+      gsap.to([ui, vc], { 
+        scale: 1, 
+        filter: "brightness(1)",
+        duration: 0.7, 
+        ease: "elastic.out(1.1, 0.4)" 
+      });
+    };
+
+    window.addEventListener('pointerdown', pressDown, { passive: true });
+    window.addEventListener('pointerup', pressUp, { passive: true });
+    window.addEventListener('pointercancel', pressUp, { passive: true });
+    
+    // Libera a pressão se o usuário começar a dar scroll ativamente "scroll e arrastamento" 
+    // Garante que o scroll não fique travado / congelado por bug de pointer
+    window.addEventListener('scroll', pressUp, { passive: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', pressDown);
+      window.removeEventListener('pointerup', pressUp);
+      window.removeEventListener('pointercancel', pressUp);
+      window.removeEventListener('scroll', pressUp);
+    };
+  }, []);
+
   const openTerminal = () => {
     window.history.pushState({ modal: 'terminal' }, '');
     setShowTerminal(true);
@@ -212,12 +259,6 @@ export default function App() {
         let ct = video.currentTime;
         tl.time(ct); // Sincroniza a timeline da UI com o vídeo
         
-        if (ct > uiStart + 0.3 && uiContainerRef.current) {
-           uiContainerRef.current.style.pointerEvents = "auto";
-        } else if (uiContainerRef.current) {
-           uiContainerRef.current.style.pointerEvents = "none";
-        }
-
         // Se o vídeo chegar ao fim no modo forward, pausa
         if (playState === 1 && ct >= (video.duration > 0 ? video.duration - 0.1 : 7.2)) {
            video.pause();
@@ -273,53 +314,18 @@ export default function App() {
           const duration = video.duration || 7.2;
           const targetTime = self.progress * duration;
 
-          if (isTouch) {
-            // Mobile/Celular: Controle responsivo
-            video.pause();
-            playState = self.direction === 1 ? 1 : -1;
-            
-            if (self.direction === -1) {
-               // Volta simulando play nativo reverso constante independente de frame rate
-               const diff = Math.abs(video.currentTime - targetTime);
-               gsap.to(video, { 
-                 currentTime: targetTime, 
-                 duration: diff < 0.2 ? 0.3 : diff * 0.85,
-                 ease: "none", 
-                 overwrite: "auto" 
-               });
-            } else {
-               gsap.to(video, { 
-                 currentTime: targetTime, 
-                 duration: 0.3,
-                 ease: "power2.out", 
-                 overwrite: "auto" 
-               });
-            }
-            if (!reqId) syncLoop();
-          } else {
-            // Desktop: Roda do mouse
-            if (self.direction === 1 && playState !== 1) {
-              playState = 1;
-              gsap.killTweensOf(video);
-              const playPromise = video.play();
-              if (playPromise !== undefined) playPromise.catch(() => {});
-              if (!reqId) syncLoop();
-            } else if (self.direction === -1) {
-              playState = -1;
-              video.pause();
-              
-              // Volta simulando play nativo reverso para roda do mouse
-              const diff = Math.abs(video.currentTime - targetTime);
-              gsap.to(video, { 
-                currentTime: targetTime, 
-                duration: diff < 0.4 ? 0.4 : diff * 0.85, 
-                ease: "none", 
-                overwrite: "auto" 
-              });
-              
-              if (!reqId) syncLoop();
-            }
-          }
+          video.pause();
+          playState = self.direction === 1 ? 1 : -1;
+          
+          // STRICT 1:1 Scrub - O mais rápido possível no desktop pra não ter delay na barra lateral
+          gsap.to(video, { 
+            currentTime: targetTime, 
+            duration: isTouch ? 0.2 : 0.05, 
+            ease: "none", 
+            overwrite: "auto" 
+          });
+          
+          if (!reqId) syncLoop();
 
           // Ativa o breathing mode se o progresso estiver próximo do final
           if (self.progress >= 0.98) {
@@ -509,7 +515,7 @@ export default function App() {
     )}
     
     {/* Virtual Scroll Track */}
-    <div ref={containerRef} className="relative h-[220vh] bg-gradient-to-br from-[#1e0524] via-[#0f0111] to-[#1f0701] font-sans selection:bg-[#FF4500]/40 text-white overflow-x-clip">
+    <div ref={containerRef} className="relative h-[115vh] md:h-[120vh] bg-gradient-to-br from-[#1e0524] via-[#0f0111] to-[#1f0701] font-sans selection:bg-[#FF4500]/40 text-white overflow-x-clip">
       
       {/* Cinematic Tech Overlays */}
       <div className="fixed inset-0 noise-bg pointer-events-none z-10"></div>
