@@ -274,16 +274,27 @@ export default function App() {
           const targetTime = self.progress * duration;
 
           if (isTouch) {
-            // Mobile/Celular: Controle 100% contínuo e responsivo baseado no toque e arrasto reais (zero atraso de 'play()')
+            // Mobile/Celular: Controle responsivo
             video.pause();
             playState = self.direction === 1 ? 1 : -1;
             
-            gsap.to(video, { 
-              currentTime: targetTime, 
-              duration: 0.22, // Amortecimento de pressão natural (toque de pressão) - acompanha perfeitamente e instantaneamente
-              ease: "power1.out", 
-              overwrite: "auto" 
-            });
+            if (self.direction === -1) {
+               // Volta simulando play nativo reverso constante independente de frame rate
+               const diff = Math.abs(video.currentTime - targetTime);
+               gsap.to(video, { 
+                 currentTime: targetTime, 
+                 duration: diff < 0.2 ? 0.3 : diff * 0.85,
+                 ease: "none", 
+                 overwrite: "auto" 
+               });
+            } else {
+               gsap.to(video, { 
+                 currentTime: targetTime, 
+                 duration: 0.3,
+                 ease: "power2.out", 
+                 overwrite: "auto" 
+               });
+            }
             if (!reqId) syncLoop();
           } else {
             // Desktop: Roda do mouse
@@ -297,10 +308,12 @@ export default function App() {
               playState = -1;
               video.pause();
               
+              // Volta simulando play nativo reverso para roda do mouse
+              const diff = Math.abs(video.currentTime - targetTime);
               gsap.to(video, { 
                 currentTime: targetTime, 
-                duration: 0.4, 
-                ease: "power2.out", 
+                duration: diff < 0.4 ? 0.4 : diff * 0.85, 
+                ease: "none", 
                 overwrite: "auto" 
               });
               
