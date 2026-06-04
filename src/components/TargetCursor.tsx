@@ -153,19 +153,27 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
     window.addEventListener('scroll', scrollHandler, { passive: true });
 
     const mouseDownHandler = () => {
-      if (!dotRef.current) return;
-      gsap.to(dotRef.current, { scale: 0.7, duration: 0.3 });
-      gsap.to(cursorRef.current, { scale: 0.9, duration: 0.2 });
+      if (!dotRef.current || !cursorRef.current || !cornersRef.current) return;
+      gsap.to(dotRef.current, { scale: 3, backgroundColor: "#FF4500", duration: 0.3, ease: "power2.out" });
+      gsap.to(cursorRef.current, { scale: 0.7, duration: 0.2, ease: "power2.out" });
+      
+      const corners: any[] = Array.from(cornersRef.current);
+      gsap.to(corners, { borderColor: "#FF4500", duration: 0.3 });
     };
 
     const mouseUpHandler = () => {
-      if (!dotRef.current) return;
-      gsap.to(dotRef.current, { scale: 1, duration: 0.3 });
-      gsap.to(cursorRef.current, { scale: 1, duration: 0.2 });
+      if (!dotRef.current || !cursorRef.current || !cornersRef.current) return;
+      gsap.to(dotRef.current, { scale: 1, backgroundColor: "#fff", duration: 0.4, ease: "power2.out" });
+      gsap.to(cursorRef.current, { scale: 1, duration: 0.6, ease: "elastic.out(1.2, 0.4)" });
+      
+      const corners: any[] = Array.from(cornersRef.current);
+      gsap.to(corners, { borderColor: "#fff", duration: 0.4 });
     };
 
     window.addEventListener('mousedown', mouseDownHandler);
     window.addEventListener('mouseup', mouseUpHandler);
+    window.addEventListener('touchstart', mouseDownHandler, { passive: true });
+    window.addEventListener('touchend', mouseUpHandler, { passive: true });
 
     const enterHandler = (e: MouseEvent) => {
       const directTarget = e.target as Element;
@@ -302,6 +310,8 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
       window.removeEventListener('scroll', scrollHandler);
       window.removeEventListener('mousedown', mouseDownHandler);
       window.removeEventListener('mouseup', mouseUpHandler);
+      window.removeEventListener('touchstart', mouseDownHandler);
+      window.removeEventListener('touchend', mouseUpHandler);
 
       if (activeTarget) {
         cleanupTarget(activeTarget);
