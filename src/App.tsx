@@ -2,7 +2,7 @@ import React, { useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Box,
   BrainCircuit,
@@ -26,6 +26,16 @@ import { useState, useEffect } from "react";
 gsap.registerPlugin(ScrollTrigger);
 ScrollTrigger.config({ ignoreMobileResize: true });
 
+const miniBenefits = [
+  { tag: "PROSPECÇÃO" },
+  { tag: "CÓDIGO ELITE" },
+  { tag: "VISUAL 8K" },
+  { tag: "SCRAPING" },
+  { tag: "VIRAL COPIAR/COLAR" },
+  { tag: "DESIGN PORTFÓLIO" },
+  { tag: "AUTOMAÇÃO PURA" }
+];
+
 export default function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -47,6 +57,14 @@ export default function App() {
   const [appReady, setAppReady] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isCarouselDragging, setIsCarouselDragging] = useState(false);
+  const [benefitIndex, setBenefitIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBenefitIndex((prev) => (prev + 1) % miniBenefits.length);
+    }, 4200);
+    return () => clearInterval(interval);
+  }, []);
 
   // High-performance Carousel dragging physics refs
   const isDownRef = useRef(false);
@@ -352,22 +370,9 @@ export default function App() {
           ".scroll-middle-card",
         );
 
-        if (headlineItems && headlineItems.length > 0) {
-          // Devolvemos com precisão a estética original da animação de saída da hero, de forma perfeitamente orgânica e acoplada ao vídeo
-          tl.to(
-            headlineItems,
-            {
-              opacity: 0,
-              scale: 1.08,
-              filter: "blur(6px)",
-              y: -40,
-              duration: 1.2,
-              stagger: 0.1,
-              ease: "power2.inOut",
-            },
-            0.2,
-          );
-        }
+        // We decoupled the headlineItems animation from the synchronized timeline to prevent
+        // browser video-buffered frames from causing momentary "freezes" or lags at the very beginning of the scroll.
+        // Instead, the hero text animations are triggered immediately and responsively in the ScrollTrigger direction handlers.
 
         const uiStart = 4.2; // Exato momento de impacto/tiro onde a UI vai entrar
         const earlyStart = 0.3; // Imediatamente após a hero text começar a subir
@@ -447,6 +452,7 @@ export default function App() {
 
         let playState = 0; // 0: idle, 1: forward, -1: reverse
         let reqId: number | null = null;
+        let isHeadlineVisible = true;
 
         // Loop de sincronização total: a UI segue o vídeo milimetricamente!
         const syncLoop = () => {
@@ -501,7 +507,7 @@ export default function App() {
 
         const isTouch =
           typeof window !== "undefined" &&
-          ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+          ("ontouchstart" in window || navigator.maxTouchPoints > 0 || window.innerWidth < 1024);
 
         ScrollTrigger.create({
           trigger: containerRef.current,
@@ -510,24 +516,39 @@ export default function App() {
           onUpdate: (self) => {
             if (!video) return;
 
-            // Se chegou ao topo absoluto (Hero)
-            if (self.progress === 0) {
-              playState = 0;
-              video.pause();
-              gsap.to(video, {
-                currentTime: 0,
-                duration: 0.3,
-                ease: "power2.out",
-                overwrite: true,
-              });
-              gsap.to(".scroll-prompt", {
-                opacity: 1,
-                autoAlpha: 1,
-                duration: 0.4,
-                ease: "power2.out",
-                overwrite: "auto",
-              });
-              introCompletedRef.current = false;
+            // Se chegou ao topo absoluto (Hero) ou extremamente perto (essencial para mobile bounce)
+            if (self.progress < 0.04) {
+              if (playState !== 0 || !isHeadlineVisible) {
+                playState = 0;
+                video.pause();
+                gsap.killTweensOf(video);
+                video.currentTime = 0;
+                tl.time(0);
+
+                isHeadlineVisible = true;
+                if (headlineItems && headlineItems.length > 0) {
+                  gsap.killTweensOf(headlineItems);
+                  gsap.to(headlineItems, {
+                    opacity: 1,
+                    scale: 1,
+                    filter: "blur(0px)",
+                    y: 0,
+                    duration: 0.6,
+                    stagger: 0.03,
+                    ease: "power2.out",
+                    overwrite: "auto",
+                  });
+                }
+
+                gsap.to(".scroll-prompt", {
+                  opacity: 1,
+                  autoAlpha: 1,
+                  duration: 0.4,
+                  ease: "power2.out",
+                  overwrite: "auto",
+                });
+                introCompletedRef.current = false;
+              }
               return;
             }
 
@@ -551,6 +572,24 @@ export default function App() {
             }
 
             if (self.direction === 1) {
+              // Animates out the hero texts immediately and smoothly, only if currently visible
+              if (self.progress > 0.01 && isHeadlineVisible) {
+                isHeadlineVisible = false;
+                if (headlineItems && headlineItems.length > 0) {
+                  gsap.killTweensOf(headlineItems);
+                  gsap.to(headlineItems, {
+                    opacity: 0,
+                    scale: 1.08,
+                    filter: "blur(6px)",
+                    y: -40,
+                    duration: 0.8,
+                    stagger: 0.05,
+                    ease: "power2.out",
+                    overwrite: "auto",
+                  });
+                }
+              }
+
               // Scroll Atua como um "Play" para iniciar toda a experiência visual organicamente
               if (playState !== 1) {
                 playState = 1;
@@ -558,19 +597,37 @@ export default function App() {
                 video.play().catch(() => {});
                 if (!reqId) syncLoop();
 
-                // Completa a rolagem automaticamente para o final da section
-                // garantindo que não importa quão forte o usuário arraste, o vídeo guiará.
+                // Completa a rolagem automaticamente para o final da section (Apenas para desktop sem toque!)
                 if (
+                  !isTouch &&
                   containerRef.current &&
                   window.scrollY < containerRef.current.scrollHeight * 0.8
                 ) {
                   window.scrollTo({
                     top: containerRef.current.scrollHeight,
                     behavior: "smooth",
-                  });
+                   });
                 }
               }
             } else if (self.direction === -1 && self.progress < 0.95) {
+              // Animates the hero texts back in beautifully with zero latency, only once on boundary
+              if (self.progress < 0.9 && !isHeadlineVisible) {
+                isHeadlineVisible = true;
+                if (headlineItems && headlineItems.length > 0) {
+                  gsap.killTweensOf(headlineItems);
+                  gsap.to(headlineItems, {
+                    opacity: 1,
+                    scale: 1,
+                    filter: "blur(0px)",
+                    y: 0,
+                    duration: 0.8,
+                    stagger: 0.05,
+                    ease: "power2.out",
+                    overwrite: "auto",
+                  });
+                }
+              }
+
               // Scroll Reverso -> Rewind fluido
               if (playState !== -1) {
                 playState = -1;
@@ -589,7 +646,8 @@ export default function App() {
 
                 if (!reqId) syncLoop();
 
-                if (window.scrollY > 0) {
+                // Scroll automático de volta para o topo (Apenas no desktop!)
+                if (!isTouch && window.scrollY > 0) {
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }
               }
@@ -615,6 +673,14 @@ export default function App() {
         if (window.scrollY > 10) {
           video.currentTime = video.duration > 0 ? video.duration - 0.1 : 6.0;
           tl.time(video.currentTime);
+          if (headlineItems && headlineItems.length > 0) {
+            gsap.set(headlineItems, {
+              opacity: 0,
+              scale: 1.08,
+              filter: "blur(6px)",
+              y: -40,
+            });
+          }
           if (!reqId) syncLoop();
         }
       };
@@ -867,7 +933,7 @@ export default function App() {
           >
             <video
               ref={videoRef}
-              className="w-full h-[55vh] md:w-[92vw] lg:w-[88vw] xl:w-[84vw] md:h-full object-cover object-top md:object-cover opacity-90 scale-[1.05] md:scale-[1.02] origin-center transition-transform duration-700 [mask-image:linear-gradient(to_bottom,black_60%,transparent_100%)] md:[mask-image:linear-gradient(to_bottom,black_70%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_60%,transparent_100%)] md:[-webkit-mask-image:linear-gradient(to_bottom,black_70%,transparent_100%)]"
+              className="w-full h-[55vh] md:w-[92vw] lg:w-[88vw] xl:w-[84vw] md:h-full object-cover object-top md:object-cover opacity-90 scale-[1.05] md:scale-[1.02] origin-center transition-transform duration-700 [mask-image:linear-gradient(to_bottom,black_60%,transparent_100%)] md:[mask-image:linear-gradient(to_bottom,black_50%,rgba(0,0,0,0.85)_70%,rgba(0,0,0,0.4)_85%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_60%,transparent_100%)] md:[-webkit-mask-image:linear-gradient(to_bottom,black_50%,rgba(0,0,0,0.85)_70%,rgba(0,0,0,0.4)_85%,transparent_100%)]"
               muted
               playsInline
               preload="auto"
@@ -932,29 +998,101 @@ export default function App() {
 
             {/* Text Animation Container */}
             <div className="relative w-full flex flex-col justify-center px-4 sm:px-6 md:px-0">
-              <div className="w-full max-w-[1440px] mx-auto flex flex-col lg:flex-row justify-between items-center lg:items-start relative z-10 pt-[42vh] md:pt-[32vh] lg:pt-0 lg:-mt-[8vh] xl:-mt-[12vh] gap-[3vh] lg:gap-12 pl-0 md:pl-0 lg:pl-0">
-                {/* MASSIVE TITLE */}
-                <div className="hero-title scroll-headline-item font-display font-black text-[13vw] sm:text-[11vw] md:text-[5.5vw] lg:text-[4.5vw] xl:text-[4.2vw] 2xl:text-[60px] uppercase leading-[0.95] sm:leading-[0.9] md:leading-[0.85] drop-shadow-[0_20px_50px_rgba(0,0,0,0.95)] lg:drop-shadow-[0_0px_60px_rgba(3,0,5,0.7)] text-white tracking-tighter md:tracking-[-2px] lg:tracking-[-3px] text-center lg:text-right flex flex-col items-center lg:items-end justify-center order-2 lg:order-2 mt-0 lg:-mt-[18vh] xl:-mt-[18vh]">
-                  <div
-                    ref={titleInnerRef}
-                    className="animate-liquid-wiggle flex flex-col items-center lg:items-end select-none relative w-full"
-                  >
-                    {/* High-Tech Title Node Coordinates */}
-                    <div className="hidden lg:flex items-center gap-1.5 mb-2 text-[10px] font-mono tracking-[0.2em] text-[#FF4500]/70">
-                      <span>[20K2_MODEL_NODE] // SCAN_CALB: 47_OBRO</span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#FF4500] animate-pulse"></span>
+              <div className="w-full max-w-[1440px] mx-auto flex flex-col lg:flex-row justify-between items-center lg:items-start relative z-10 pt-[11vh] md:pt-[10vh] lg:pt-0 lg:-mt-[8vh] xl:-mt-[12vh] gap-[2vh] lg:gap-12 pl-0 md:pl-0 lg:pl-0">
+                
+                {/* Animated Mini Benefits / Testimonial Carousel - Compact Mystery Cyber Badge styled as a vertical badge on mobile to avoid covering the face and positioned high up in the sketched area */}
+                <div 
+                  id="benefits-ticker-container"
+                  className="scroll-headline-item animate-liquid-wiggle w-[58px] h-auto min-h-[75px] sm:w-[165px] sm:min-h-0 sm:h-auto lg:w-[210px] bg-[#03070D]/95 border border-[#FF4500]/30 py-2 px-1 sm:p-2 sm:py-1.5 sm:px-2.5 rounded-[4px] absolute flex flex-col sm:flex-row items-center justify-start gap-1 sm:gap-2.5 backdrop-blur-md overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-l-[3px] border-l-[#FF4500] pointer-events-auto -top-[72vh] sm:-top-[52vh] right-4 sm:right-6 lg:-top-[62vh] xl:-top-[68vh] lg:right-4 xl:right-4 z-30"
+                >
+                  <div className="absolute top-0 right-0 w-12 h-[1px] bg-gradient-to-r from-transparent via-[#FF4555]/30 to-transparent"></div>
+                  <div className="absolute bottom-0 left-0 w-12 h-[1px] bg-gradient-to-r from-transparent via-[#FF4555]/30 to-transparent"></div>
+
+                  {/* Blinking Cyber Core Pin */}
+                  <div className="flex-shrink-0 relative flex h-1 sm:h-2 w-1 sm:w-2 select-none">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF4500] opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1 sm:h-2 w-1 sm:w-2 bg-[#FF4500]"></span>
+                  </div>
+
+                  <div className="flex-1 min-w-0 flex flex-col items-center sm:items-start leading-none select-none text-center sm:text-left">
+                    <span className="hidden sm:inline text-[9px] font-mono tracking-[0.25em] text-white/40 uppercase mb-1 whitespace-nowrap">
+                      // PROTOCOLO ATIVO
+                    </span>
+                    <span className="inline sm:hidden text-[5.5px] font-mono tracking-[0.05em] text-white/40 uppercase mb-1 whitespace-normal break-words leading-none text-center">
+                      // PROTOCOLO<br/>ATIVO
+                    </span>
+                    <div className="h-auto sm:h-5 flex items-center justify-center">
+                      <AnimatePresence mode="wait">
+                        <motion.span
+                          key={benefitIndex}
+                          initial={{ opacity: 0, y: 2, filter: "blur(2px)" }}
+                          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                          exit={{ opacity: 0, y: -2, filter: "blur(2px)" }}
+                          transition={{ duration: 0.25, ease: "easeOut" }}
+                          className="font-mono text-[9px] sm:text-[10px] lg:text-[11px] text-[#FF4500] font-black tracking-[0.02em] sm:tracking-[0.15em] uppercase select-none drop-shadow-[0_0_8px_rgba(255,69,0,0.6)] whitespace-normal break-words leading-tight text-center sm:text-left"
+                        >
+                          <span className="hidden sm:inline">{miniBenefits[benefitIndex].tag}</span>
+                          <span className="block sm:hidden">
+                            {(() => {
+                              const tag = miniBenefits[benefitIndex].tag;
+                              const parts = tag.split(" ");
+                              const formattedParts: string[] = [];
+                              parts.forEach(part => {
+                                if (part.includes("/")) {
+                                  const subParts = part.split("/");
+                                  subParts.forEach((sub, subIdx) => {
+                                    if (subIdx < subParts.length - 1) {
+                                      formattedParts.push(sub + "/");
+                                    } else {
+                                      formattedParts.push(sub);
+                                    }
+                                  });
+                                } else {
+                                  formattedParts.push(part);
+                                }
+                              });
+                              return formattedParts.map((word, idx) => (
+                                <span key={idx} className="block leading-[1.1] tracking-normal mb-0.5 last:mb-0">
+                                  {word}
+                                </span>
+                              ));
+                            })()}
+                          </span>
+                        </motion.span>
+                      </AnimatePresence>
                     </div>
-                    <span className="block origin-center lg:origin-right hero-glow-text whitespace-nowrap">
-                      ASSUMA O
-                    </span>
-                    <span className="block origin-center lg:origin-right hero-glow-text whitespace-nowrap behind-persona">
-                      CONTROLE.
-                    </span>
+                  </div>
+                </div>
+
+                {/* RIGHT COLUMN: MASSIVE TITLE */}
+                <div className="order-2 lg:order-2 flex flex-col items-center lg:items-end justify-center -mt-[12vh] sm:-mt-[8vh] lg:-mt-[18vh] xl:-mt-[18vh] -top-[6vh] sm:top-0 lg:-translate-x-16 xl:-translate-x-24 relative w-full lg:w-auto">
+                  {/* MASSIVE TITLE TEXT */}
+                  <div className="hero-title scroll-headline-item font-display font-black text-[13vw] sm:text-[11vw] md:text-[5.5vw] lg:text-[4.5vw] xl:text-[4.2vw] 2xl:text-[60px] uppercase leading-[0.95] sm:leading-[0.9] md:leading-[0.85] drop-shadow-[0_20px_50px_rgba(0,0,0,0.95)] lg:drop-shadow-[0_0px_60px_rgba(3,0,5,0.7)] text-white tracking-tighter md:tracking-[-2px] lg:tracking-[-3px] text-center lg:text-right flex flex-col items-center lg:items-end justify-center relative w-full lg:w-auto">
+                    {/* Local ultra-feathered background accent behind texts on web to ensure supreme legibility with absolutely zero harsh lines or cuts */}
+                    <div className="hidden lg:block absolute -inset-x-32 -inset-y-16 bg-[radial-gradient(circle_at_center,rgba(3,0,5,0.75)_0%,rgba(3,0,5,0.4)_50%,transparent_100%)] blur-[40px] rounded-full pointer-events-none -z-10" />
+                    <div
+                      ref={titleInnerRef}
+                      className="animate-liquid-wiggle flex flex-col items-center lg:items-end select-none relative w-full"
+                    >
+                      {/* High-Tech Title Node Coordinates */}
+                      <div className="hidden lg:flex items-center gap-1.5 mb-2 text-[10px] font-mono tracking-[0.2em] text-[#FF4500]/70">
+                        <span>[20K2_MODEL_NODE] // SCAN_CALB: 47_OBRO</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#FF4500] animate-pulse"></span>
+                      </div>
+                      <span className="block origin-center lg:origin-right hero-glow-text whitespace-nowrap">
+                        ASSUMA O
+                      </span>
+                      <span className="block origin-center lg:origin-right hero-glow-text whitespace-nowrap behind-persona">
+                        CONTROLE.
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Precise Sleek Subtitle */}
-                <div className="scroll-headline-item flex justify-center lg:justify-start order-1 lg:order-1 w-full lg:w-auto mt-0 lg:-mt-[21vh] xl:-mt-[21vh] drop-shadow-[0_20px_50px_rgba(0,0,0,0.95)] lg:drop-shadow-[0_0px_60px_rgba(3,0,5,0.7)]">
+                <div className="scroll-headline-item flex justify-center lg:justify-start order-1 lg:order-1 w-full lg:w-auto -mt-[35vh] sm:-mt-[15vh] lg:-mt-[21vh] xl:-mt-[21vh] drop-shadow-[0_20px_50px_rgba(0,0,0,0.95)] lg:drop-shadow-[0_0px_60px_rgba(3,0,5,0.7)] relative">
+                  {/* Local ultra-feathered background accent behind texts on web to ensure supreme legibility with absolutely zero harsh lines or cuts */}
+                  <div className="hidden lg:block absolute -inset-x-32 -inset-y-16 bg-[radial-gradient(circle_at_center,rgba(3,0,5,0.75)_0%,rgba(3,0,5,0.4)_50%,transparent_100%)] blur-[40px] rounded-full pointer-events-none -z-10" />
                   <div
                     ref={subtitleInnerRef}
                     className="animate-liquid-wiggle flex flex-col items-center lg:items-start justify-center -space-y-1.5 md:-space-y-2 lg:-space-y-3 select-none"
@@ -976,7 +1114,7 @@ export default function App() {
                         SORTE
                       </span>
                       <span>COM</span>
-                      <span className="text-white font-black text-[22px] sm:text-[26px] md:text-[25px] lg:text-[38px] xl:text-[46px] 2xl:text-[50px] drop-shadow-[0_0_20px_rgba(255,255,255,0.8)] scale-110 ml-1">
+                      <span className="text-white font-sans font-black text-[22px] sm:text-[26px] md:text-[25px] lg:text-[38px] xl:text-[46px] 2xl:text-[50px] drop-shadow-[0_0_20px_rgba(255,255,255,0.8)] scale-110 ml-1 tracking-[-0.12em]">
                         I.A.
                       </span>
                     </span>
@@ -1232,7 +1370,7 @@ export default function App() {
 
                 <div
                   ref={carouselScrollRef}
-                  className={`w-[calc(100%+2rem)] sm:w-full overflow-x-auto overflow-y-hidden pointer-events-auto hidden-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-4 sm:pb-6 -mx-4 sm:mx-0 cursor-grab active:cursor-grabbing selection:bg-transparent ${isCarouselDragging ? "scroll-auto" : "snap-x snap-mandatory"}`}
+                  className={`w-[calc(100%+2rem)] sm:w-full overflow-x-auto overflow-y-hidden pointer-events-auto hidden-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-4 sm:pb-6 -mx-4 sm:mx-0 cursor-grab active:cursor-grabbing selection:bg-transparent scroll-middle-card ${isCarouselDragging ? "scroll-auto" : "snap-x snap-mandatory"}`}
                   onMouseDown={(e) => handleDragStart(e.pageX)}
                   onMouseMove={(e) => handleDragMove(e.pageX)}
                   onMouseUp={handleDragEnd}
@@ -1245,7 +1383,7 @@ export default function App() {
                     {cards.map((card) => (
                       <div
                         key={card.id}
-                        className="snap-center sm:snap-start shrink-0 w-[80vw] sm:w-[300px] md:w-[340px] lg:w-[360px] h-[210px] sm:h-[235px] md:h-[245px] lg:h-[255px] relative flex flex-col bg-[#050106] border border-white/10 rounded-2xl md:rounded-3xl overflow-hidden hover:border-[#FF4500]/60 hover:shadow-[0_0_30px_rgba(255,69,0,0.15)] transform hover:-translate-y-1.5 transition-all duration-500 will-change-transform group/card isolate"
+                        className="snap-center sm:snap-start shrink-0 w-[80vw] sm:w-[300px] md:w-[340px] lg:w-[360px] h-[210px] sm:h-[235px] md:h-[245px] lg:h-[255px] relative flex flex-col bg-[#050106] border border-white/10 rounded-2xl md:rounded-3xl overflow-hidden hover:border-[#FF4500]/60 hover:shadow-[0_0_30px_rgba(255,69,0,0.15)] transform hover:-translate-y-1.5 transition-all duration-500 will-change-transform group/card isolate scroll-middle-card"
                       >
                         {/* Video thumbnail background */}
                         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none rounded-2xl md:rounded-3xl">
