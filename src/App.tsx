@@ -178,6 +178,15 @@ export default function App() {
 
   // Efeito Realista Imersivo de "Pressão na Tela" e Drag-to-Scroll (Arrastar a tela inteira)
   useEffect(() => {
+    // Detect mobile touch devices safely to bypass synthetic drag scrolling and keep native inertial touch scroll
+    const isTouchDevice =
+      typeof window !== "undefined" &&
+      ("ontouchstart" in window || navigator.maxTouchPoints > 0 || window.innerWidth < 1024);
+
+    if (isTouchDevice) {
+      return;
+    }
+
     const ui = uiContainerRef.current;
     const vc = videoContainerRef.current;
 
@@ -186,6 +195,7 @@ export default function App() {
     let initialScrollY = 0;
 
     const pressDown = (e: Event) => {
+      if (document.querySelector(".terminal-modal")) return;
       if ((e.target as HTMLElement).closest(".scroll-middle-card")) return;
       if ((e.target as HTMLElement).closest(".terminal-modal")) return;
 
@@ -454,9 +464,13 @@ export default function App() {
         let reqId: number | null = null;
         let isHeadlineVisible = true;
 
+        const isTouch =
+          typeof window !== "undefined" &&
+          ("ontouchstart" in window || navigator.maxTouchPoints > 0 || window.innerWidth < 1024);
+
         // Loop de sincronização total: a UI segue o vídeo milimetricamente!
         const syncLoop = () => {
-          if (!video) return;
+          if (!video || isTouch) return;
 
           let ct = video.currentTime;
           tl.time(ct); // Sincroniza a timeline da UI com o vídeo
@@ -500,15 +514,15 @@ export default function App() {
                 ease: "power2.out",
               });
             }
+          } else if (playState === -1) {
+            video.pause();
+            video.currentTime = Math.max(0, video.currentTime - 0.08); // Manual reverse
           }
 
           reqId = requestAnimationFrame(syncLoop);
         };
 
-        const isTouch =
-          typeof window !== "undefined" &&
-          ("ontouchstart" in window || navigator.maxTouchPoints > 0 || window.innerWidth < 1024);
-
+        // isTouch is already declared above, so we can use it directly
         ScrollTrigger.create({
           trigger: containerRef.current,
           start: "top top",
@@ -516,6 +530,79 @@ export default function App() {
           onUpdate: (self) => {
             if (!video) return;
 
+            // --- MOBILE DIRECT SCRUB FLOW ---
+            if (isTouch) {
+              // Both text and video strictly respect scroll position.
+              tl.progress(self.progress);
+              
+              const vDuration = video.duration > 0 ? video.duration : 7.2;
+              const targetTime = self.progress * vDuration;
+              
+              // Smoothly scrub video time to prevent frame locking
+              video.currentTime = targetTime;
+
+              if (self.progress > 0.04) {
+                if (isHeadlineVisible) {
+                  isHeadlineVisible = false;
+                  if (headlineItems && headlineItems.length > 0) {
+                    gsap.killTweensOf(headlineItems);
+                    gsap.to(headlineItems, {
+                      opacity: 0,
+                      scale: 1.08,
+                      filter: "blur(6px)",
+                      y: -40,
+                      duration: 0.8,
+                      stagger: 0.05,
+                      ease: "power2.out",
+                      overwrite: "auto",
+                    });
+                  }
+                  gsap.to(".scroll-prompt", { opacity: 0, autoAlpha: 0, duration: 0.3 });
+                }
+              } else {
+                if (!isHeadlineVisible) {
+                  isHeadlineVisible = true;
+                  if (headlineItems && headlineItems.length > 0) {
+                    gsap.killTweensOf(headlineItems);
+                    gsap.to(headlineItems, {
+                      opacity: 1,
+                      scale: 1,
+                      filter: "blur(0px)",
+                      y: 0,
+                      duration: 0.8,
+                      stagger: 0.05,
+                      ease: "power2.out",
+                      overwrite: "auto",
+                    });
+                  }
+                  gsap.to(".scroll-prompt", { opacity: 1, autoAlpha: 1, duration: 0.4 });
+                }
+              }
+
+              if (self.progress >= 0.98) {
+                introCompletedRef.current = true;
+                if (
+                  videoContainerRef.current &&
+                  !videoContainerRef.current.classList.contains("breathing-active")
+                ) {
+                  videoContainerRef.current.classList.add("breathing-active");
+                  gsap.to(videoContainerRef.current, { scale: 1.015, duration: 25, ease: "sine.inOut", yoyo: true, repeat: -1 });
+                }
+              } else {
+                introCompletedRef.current = false;
+                if (
+                  videoContainerRef.current &&
+                  videoContainerRef.current.classList.contains("breathing-active")
+                ) {
+                  videoContainerRef.current.classList.remove("breathing-active");
+                  gsap.killTweensOf(videoContainerRef.current, "scale");
+                  gsap.to(videoContainerRef.current, { scale: 1, duration: 2.5, ease: "power2.out" });
+                }
+              }
+              return;
+            }
+
+            // --- DESKTOP SYNCHRONIZATION FLOW ---
             // Se chegou ao topo absoluto (Hero) ou extremamente perto (essencial para mobile bounce)
             if (self.progress < 0.04) {
               if (playState !== 0 || !isHeadlineVisible) {

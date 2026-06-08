@@ -391,21 +391,21 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
       <div className="relative z-10 w-full max-w-[1500px] h-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5 flex flex-col min-h-0 justify-between">
         
         {/* Top Header Controls with HUD branding */}
-        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 flex-shrink-0">
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-3 sm:mb-4 flex-shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-2.5 h-5 bg-[#FF4500] -skew-x-12 animate-pulse shadow-[0_0_10px_#FF4500]"></div>
             <div className="flex items-center gap-1.5">
-               <span className="text-lg sm:text-xl font-bold tracking-widest text-white uppercase">INUX</span>
-               <span className="text-lg sm:text-xl font-bold tracking-widest text-[#FF4500] drop-shadow-[0_0_10px_#FF4500] uppercase">FORTY7</span>
+               <span className="text-base sm:text-xl font-bold tracking-widest text-white uppercase">INUX</span>
+               <span className="text-base sm:text-xl font-bold tracking-widest text-[#FF4500] drop-shadow-[0_0_10px_#FF4500] uppercase">FORTY7</span>
             </div>
-            <span className="font-mono text-[8.5px] tracking-widest text-white/40 border border-white/5 px-2 py-0.5 ml-2 bg-white/5 uppercase rounded-[1px]">
+            <span className="font-mono text-[7px] sm:text-[8.5px] tracking-widest text-white/40 border border-white/5 px-2 py-0.5 ml-1 sm:ml-2 bg-white/5 uppercase rounded-[1px] whitespace-nowrap">
                ECOSYSTEM v3.0 // ATIVO
             </span>
           </div>
 
           <button 
             onClick={onClose}
-            className="cursor-target relative group px-5 py-2 border border-[#FF4500]/30 bg-transparent hover:bg-[#FF4500]/10 text-white/80 hover:text-white font-mono text-[11px] font-bold tracking-widest uppercase transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-[0_0_12px_rgba(255,69,0,0.2)] active:scale-95"
+            className="cursor-target w-full sm:w-auto relative group px-4 sm:px-5 py-2.5 sm:py-2 border border-[#FF4500]/30 bg-transparent hover:bg-[#FF4500]/10 text-white/80 hover:text-white font-mono text-[9px] sm:text-[11px] font-bold tracking-widest uppercase transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-[0_0_12px_rgba(255,69,0,0.2)] active:scale-95"
           >
             <X size={12} className="text-[#FF4500]" />
             <span>[ FECHAR ACESSO ECOSSISTEMA ]</span>
@@ -413,9 +413,9 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
         </header>
 
         {/* Global HUD Stats Ribbon */}
-        <div className="mb-4 border border-white/5 bg-[#080D18]/45 p-3 flex flex-wrap gap-y-2 gap-x-6 items-center justify-between text-[10.5px] tracking-wider text-white/40 relative overflow-hidden flex-shrink-0">
+        <div className="mb-3 sm:mb-4 border border-white/5 bg-[#080D18]/45 p-2 sm:p-3 flex flex-wrap gap-y-1.5 sm:gap-y-2 gap-x-4 sm:gap-x-6 items-center justify-between text-[8px] sm:text-[10.5px] tracking-wider text-white/40 relative overflow-hidden flex-shrink-0">
           <div className="absolute top-0 left-0 w-1.5 h-full bg-[#FF4500]/60"></div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="w-1.5 h-1.5 bg-[#00F0FF] rounded-full animate-ping"></div>
             <span>SISTEMA: <strong className="text-white font-bold">PORTÁTIL COPIAR & COLAR</strong></span>
           </div>
@@ -434,7 +434,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch min-h-0 relative">
           
           {/* Mobile Category select tabs (horizontal slide) */}
-          <div className="lg:hidden w-full flex overflow-x-auto gap-1.5 pb-2 pt-0.5 mb-1 flex-shrink-0 snap-x scrollbar-none scroll-smooth">
+          <div className="lg:hidden w-full flex overflow-x-auto gap-1.5 pb-2 pt-0.5 mb-1 flex-shrink-0 snap-x hidden-scrollbar scroll-smooth">
             {categories.map((cat, idx) => {
               const isActive = activeTab === cat.id;
               const mobileLabels: Record<string, string> = {
@@ -585,7 +585,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                           className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-full min-h-0"
                         >
                           {/* Inner List (Left side of split grid, taking 4 spans) */}
-                          <div className={`col-span-1 lg:col-span-4 flex-col border border-white/5 bg-[#0B1221]/50 p-2.5 rounded-[1px] h-full min-h-0 overflow-hidden ${mobileViewMode === 'detail' ? 'hidden lg:flex' : 'flex'}`}>
+                          <div className={`col-span-1 lg:col-span-4 flex-col border border-white/5 bg-[#0B1221]/50 p-2.5 rounded-[1px] h-full min-h-0 overflow-hidden ${mobileViewMode === 'detail' ? 'hidden lg:flex' : 'flex mobile-slide-list'}`}>
                             <div className="text-[8.5px] text-white/40 tracking-widest uppercase mb-2 select-none border-b border-white/5 pb-1 flex justify-between flex-shrink-0">
                               <span>SELECIONE O MODELO</span>
                               <span className="text-orange-500 font-bold">[{filteredPrompts.length}]</span>
@@ -619,16 +619,15 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                           </div>
 
                           {/* Inner Detail Card (Right side of split grid, taking 8 spans) */}
-                          <div className={`col-span-1 lg:col-span-8 border border-white/10 bg-[#0B1221]/90 p-4 rounded-[1px] h-full flex-col min-h-0 justify-between overflow-y-auto custom-scroll ${mobileViewMode === 'list' ? 'hidden lg:flex' : 'flex'}`}>
+                          <div className={`col-span-1 lg:col-span-8 border border-white/10 bg-[#0B1221]/90 p-4 rounded-[1px] h-full flex-col min-h-0 justify-between ${mobileViewMode === 'list' ? 'hidden lg:flex' : 'flex mobile-slide-detail'}`}>
                             {(() => {
                               const item = filteredPrompts.find(p => p.id === selectedPromptId) || filteredPrompts[0] || ecosystemData.prompts[0];
                               if (!item) return <div className="text-center py-6 text-white/20 text-xs">Selecione um prompt analítico.</div>;
                               const isCopied = copiedId === item.id;
                               const isTutorialActive = activePromptTutorialId === item.id;
                               return (
-                                <div className="flex-1 flex flex-col justify-between gap-4 h-full min-h-0">
-                                  
-                                  <div className="flex flex-col gap-3 min-h-0">
+                                <div className="flex-1 flex flex-col justify-between gap-4 min-h-0">
+                                  <div className="flex flex-col gap-3 min-h-0 overflow-y-auto custom-scroll flex-1 pr-1 pb-1">
                                     <button 
                                       className="lg:hidden text-[#FF4500] hover:text-white flex items-center gap-1.5 font-mono text-[10px] uppercase font-bold self-start bg-white/5 px-2 py-1.5 rounded-[1px] border border-white/5 active:scale-95 transition-all"
                                       onClick={() => setMobileViewMode('list')}
@@ -670,7 +669,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                                   </div>
 
                                   <div className="flex flex-col gap-2 flex-shrink-0">
-                                    <div className="grid grid-cols-2 gap-2">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                       <button
                                         onClick={() => handleCopy(item.prompt, item.id)}
                                         className={`cursor-target py-2 px-3 font-mono text-[10px] font-bold uppercase tracking-widest border rounded-[2px] flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 ${
@@ -753,7 +752,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                           className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-full min-h-0"
                         >
                           {/* Models Left selector list */}
-                          <div className={`col-span-1 lg:col-span-4 flex-col border border-white/5 bg-[#0B1221]/50 p-2.5 rounded-[1px] h-full min-h-0 overflow-hidden ${mobileViewMode === 'detail' ? 'hidden lg:flex' : 'flex'}`}>
+                          <div className={`col-span-1 lg:col-span-4 flex-col border border-white/5 bg-[#0B1221]/50 p-2.5 rounded-[1px] h-full min-h-0 overflow-hidden ${mobileViewMode === 'detail' ? 'hidden lg:flex' : 'flex mobile-slide-list'}`}>
                             <div className="text-[8.5px] text-white/40 tracking-widest uppercase mb-2 select-none border-b border-white/5 pb-1 flex justify-between flex-shrink-0">
                               <span>SELECIONE O SISTEMA CHIP</span>
                               <span className="text-orange-500 font-bold">[{filteredModels.length}]</span>
@@ -790,15 +789,14 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                           </div>
 
                           {/* Model Details Right Card */}
-                          <div className={`col-span-1 lg:col-span-8 border border-white/10 bg-[#070D18]/90 p-4 rounded-[1px] h-full flex-col min-h-0 overflow-y-auto custom-scroll justify-between ${mobileViewMode === 'list' ? 'hidden lg:flex' : 'flex'}`}>
+                          <div className={`col-span-1 lg:col-span-8 border border-white/10 bg-[#070D18]/90 p-4 rounded-[1px] h-full flex-col min-h-0 justify-between ${mobileViewMode === 'list' ? 'hidden lg:flex' : 'flex mobile-slide-detail'}`}>
                             {(() => {
                               const activeModel = filteredModels.find(m => m.id === selectedModelId) || filteredModels[0] || ecosystemData.models[0];
                               if (!activeModel) return null;
                               const isCopied = copiedId === activeModel.id;
                               return (
-                                <div className="flex-1 flex flex-col justify-between gap-3 h-full min-h-0">
-                                  
-                                  <div className="flex flex-col gap-3 min-h-0">
+                                <div className="flex-1 flex flex-col justify-between gap-3 min-h-0">
+                                  <div className="flex flex-col gap-3 min-h-0 overflow-y-auto custom-scroll flex-1 pr-1 pb-1">
                                     <button 
                                       className="lg:hidden text-[#FF4500] hover:text-white flex items-center gap-1.5 font-mono text-[10px] uppercase font-bold self-start bg-white/5 px-2 py-1.5 rounded-[1px] border border-white/5 active:scale-95 transition-all w-fit mb-1"
                                       onClick={() => setMobileViewMode('list')}
@@ -936,7 +934,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                           className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-full min-h-0"
                         >
                           {/* Creations Left List */}
-                          <div className={`col-span-1 lg:col-span-4 flex-col border border-white/5 bg-[#0B1221]/50 p-2.5 rounded-[1px] h-full min-h-0 overflow-hidden ${mobileViewMode === 'detail' ? 'hidden lg:flex' : 'flex'}`}>
+                          <div className={`col-span-1 lg:col-span-4 flex-col border border-white/5 bg-[#0B1221]/50 p-2.5 rounded-[1px] h-full min-h-0 overflow-hidden ${mobileViewMode === 'detail' ? 'hidden lg:flex' : 'flex mobile-slide-list'}`}>
                             <div className="text-[8.5px] text-white/40 tracking-widest uppercase mb-2 select-none border-b border-white/5 pb-1 flex justify-between flex-shrink-0">
                               <span>SELECIONE BLUEPRINT</span>
                               <span className="text-orange-500 font-bold">[{filteredCreations.length}]</span>
@@ -967,16 +965,15 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                           </div>
 
                           {/* Creations Right Details Card */}
-                          <div className={`col-span-1 lg:col-span-8 border border-white/10 bg-[#0B1221]/90 p-4 rounded-[1px] h-full flex-col min-h-0 overflow-y-auto custom-scroll justify-between ${mobileViewMode === 'list' ? 'hidden lg:flex' : 'flex'}`}>
+                          <div className={`col-span-1 lg:col-span-8 border border-white/10 bg-[#0B1221]/90 p-4 rounded-[1px] h-full flex-col min-h-0 justify-between ${mobileViewMode === 'list' ? 'hidden lg:flex' : 'flex mobile-slide-detail'}`}>
                             {(() => {
                               const item = filteredCreations.find(c => c.id === selectedCreationId) || filteredCreations[0] || ecosystemData.creations[0];
                               if (!item) return null;
                               const isCopied = copiedId === item.id;
                               const isDemoActive = activeCreationDemoId === item.id;
                               return (
-                                <div className="flex-1 flex flex-col justify-between gap-3 h-full min-h-0">
-                                  
-                                  <div className="flex flex-col gap-3 min-h-0">
+                                <div className="flex-1 flex flex-col justify-between gap-3 min-h-0">
+                                  <div className="flex flex-col gap-3 min-h-0 overflow-y-auto custom-scroll flex-1 pr-1 pb-1">
                                     <button 
                                       className="lg:hidden text-[#FF4500] hover:text-white flex items-center gap-1.5 font-mono text-[10px] uppercase font-bold self-start bg-white/5 px-2 py-1.5 rounded-[1px] border border-white/5 active:scale-95 transition-all w-fit"
                                       onClick={() => setMobileViewMode('list')}
@@ -1133,7 +1130,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                           className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-full min-h-0"
                         >
                           {/* Automations Left List */}
-                          <div className={`col-span-1 lg:col-span-4 flex-col border border-white/5 bg-[#0B1221]/50 p-2.5 rounded-[1px] h-full min-h-0 overflow-hidden ${mobileViewMode === 'detail' ? 'hidden lg:flex' : 'flex'}`}>
+                          <div className={`col-span-1 lg:col-span-4 flex-col border border-white/5 bg-[#0B1221]/50 p-2.5 rounded-[1px] h-full min-h-0 overflow-hidden ${mobileViewMode === 'detail' ? 'hidden lg:flex' : 'flex mobile-slide-list'}`}>
                             <div className="text-[8.5px] text-white/40 tracking-widest uppercase mb-2 select-none border-b border-white/5 pb-1 flex justify-between flex-shrink-0">
                               <span>SELECIONE AUTOMOTO</span>
                               <span className="text-orange-500 font-bold">[{filteredAutomations.length}]</span>
@@ -1164,16 +1161,15 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                           </div>
 
                           {/* Automations Right Details Card */}
-                          <div className={`col-span-1 lg:col-span-8 border border-white/10 bg-[#0B1221]/90 p-4 rounded-[1px] h-full flex-col min-h-0 overflow-y-auto custom-scroll justify-between ${mobileViewMode === 'list' ? 'hidden lg:flex' : 'flex'}`}>
+                          <div className={`col-span-1 lg:col-span-8 border border-white/10 bg-[#0B1221]/90 p-4 rounded-[1px] h-full flex-col min-h-0 justify-between ${mobileViewMode === 'list' ? 'hidden lg:flex' : 'flex mobile-slide-detail'}`}>
                             {(() => {
                               const item = filteredAutomations.find(a => a.id === selectedAutomationId) || filteredAutomations[0] || ecosystemData.automations[0];
                               if (!item) return null;
                               const isCopied = copiedId === item.id;
                               const isThisRunning = runningAutomationId === item.id;
                               return (
-                                <div className="flex-1 flex flex-col justify-between gap-3 h-full min-h-0">
-                                  
-                                  <div className="flex flex-col gap-3 min-h-0">
+                                <div className="flex-1 flex flex-col justify-between gap-3 min-h-0">
+                                  <div className="flex flex-col gap-3 min-h-0 overflow-y-auto custom-scroll flex-1 pr-1 pb-1">
                                     <button 
                                       className="lg:hidden text-[#FF4500] hover:text-white flex items-center gap-1.5 font-mono text-[10px] uppercase font-bold self-start bg-white/5 px-2 py-1.5 rounded-[1px] border border-white/5 active:scale-95 transition-all w-fit mb-1"
                                       onClick={() => setMobileViewMode('list')}
@@ -1199,7 +1195,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                                     {/* Action instructions steps */}
                                     <div className="mb-1">
                                        <strong className="text-[#FF4500] font-mono text-[8.5px] tracking-widest uppercase block mb-1 font-black">// PASSO A PASSO TÁTICO DE EXECUÇÃO:</strong>
-                                       <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5">
+                                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-1.5">
                                           {item.steps.map((step, idx) => (
                                             <div key={idx} className="bg-black/35 p-2 border border-white/5 relative rounded-[1px] min-h-[44px]">
                                                <div className="absolute top-1 right-1 text-[8px] font-bold text-white/15">{idx + 1}</div>
@@ -1288,7 +1284,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                           className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-full min-h-0"
                         >
                           {/* Productivity Left List */}
-                          <div className={`col-span-1 lg:col-span-4 flex-col border border-white/5 bg-[#0B1221]/50 p-2.5 rounded-[1px] h-full min-h-0 overflow-hidden ${mobileViewMode === 'detail' ? 'hidden lg:flex' : 'flex'}`}>
+                          <div className={`col-span-1 lg:col-span-4 flex-col border border-white/5 bg-[#0B1221]/50 p-2.5 rounded-[1px] h-full min-h-0 overflow-hidden ${mobileViewMode === 'detail' ? 'hidden lg:flex' : 'flex mobile-slide-list'}`}>
                             <div className="text-[8.5px] text-white/40 tracking-widest uppercase mb-2 select-none border-b border-white/5 pb-1 flex justify-between flex-shrink-0">
                               <span>SELECIONE O HACK</span>
                               <span className="text-orange-500 font-bold">[{filteredProductivity.length}]</span>
@@ -1318,15 +1314,14 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                           </div>
 
                           {/* Productivity Right Details Card */}
-                          <div className={`col-span-1 lg:col-span-8 border border-white/10 bg-[#0B1221]/90 p-4 rounded-[1px] h-full flex-col min-h-0 overflow-y-auto custom-scroll justify-between ${mobileViewMode === 'list' ? 'hidden lg:flex' : 'flex'}`}>
+                          <div className={`col-span-1 lg:col-span-8 border border-white/10 bg-[#0B1221]/90 p-4 rounded-[1px] h-full flex-col min-h-0 justify-between ${mobileViewMode === 'list' ? 'hidden lg:flex' : 'flex mobile-slide-detail'}`}>
                             {(() => {
                               const item = filteredProductivity.find(p => p.id === selectedProductivityId) || filteredProductivity[0] || ecosystemData.productivity[0];
                               if (!item) return null;
                               const isCopied = copiedId === item.id;
                               return (
-                                <div className="flex-1 flex flex-col justify-between gap-3 h-full min-h-0">
-                                  
-                                  <div className="flex flex-col gap-3 min-h-0">
+                                <div className="flex-1 flex flex-col justify-between gap-3 min-h-0">
+                                  <div className="flex flex-col gap-3 min-h-0 overflow-y-auto custom-scroll flex-1 pr-1 pb-1">
                                     <button 
                                       className="lg:hidden text-[#FF4500] hover:text-white flex items-center gap-1.5 font-mono text-[10px] uppercase font-bold self-start bg-white/5 px-2 py-1.5 rounded-[1px] border border-white/5 active:scale-95 transition-all w-fit mb-1"
                                       onClick={() => setMobileViewMode('list')}
