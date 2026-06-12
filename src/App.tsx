@@ -74,6 +74,45 @@ export default function App() {
   const lastTimeRef = useRef(0);
   const velocityRef = useRef(0);
 
+  const scrollCarouselNext = () => {
+    const ele = carouselScrollRef.current;
+    if (ele) {
+      const step = getCardStepWidth();
+      const maxScroll = ele.scrollWidth - ele.clientWidth;
+      let targetScroll = Math.round(ele.scrollLeft / step) * step + step;
+      if (targetScroll >= maxScroll + 20) {
+        targetScroll = 0;
+      }
+      targetScroll = Math.round(targetScroll / step) * step;
+      targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+      gsap.to(ele, {
+        scrollLeft: targetScroll,
+        duration: 0.55,
+        ease: "power2.out",
+        overwrite: "auto",
+      });
+    }
+  };
+
+  const scrollCarouselPrev = () => {
+    const ele = carouselScrollRef.current;
+    if (ele) {
+      const step = getCardStepWidth();
+      let targetScroll = Math.round(ele.scrollLeft / step) * step - step;
+      if (targetScroll < -20) {
+        const maxScroll = ele.scrollWidth - ele.clientWidth;
+        targetScroll = maxScroll;
+      }
+      targetScroll = Math.round(targetScroll / step) * step;
+      gsap.to(ele, {
+        scrollLeft: targetScroll,
+        duration: 0.55,
+        ease: "power2.out",
+        overwrite: "auto",
+      });
+    }
+  };
+
   const getCardStepWidth = () => {
     if (window.innerWidth < 640) {
       return window.innerWidth * 0.8 + 12; // 80vw + gap
@@ -119,9 +158,11 @@ export default function App() {
     if (dt > 10) {
       const dx = clientX - lastXRef.current;
       velocityRef.current = dx / dt; // pixels per millisecond
-      lastXRef.current = clientX;
       lastTimeRef.current = now;
     }
+    
+    // Always store latest X
+    lastXRef.current = clientX;
   };
 
   const handleDragEnd = () => {
@@ -135,6 +176,16 @@ export default function App() {
     const step = getCardStepWidth();
     const currentScroll = ele.scrollLeft;
     const vel = velocityRef.current;
+
+    const deltaX = lastXRef.current - startXRef.current;
+
+    // Check if dragging significantly rightward at the very beginning to go back to Hero
+    if (scrollLeftStartRef.current <= 15 && deltaX > 50) {
+      if ((window as any)._triggerBackward) {
+        (window as any)._triggerBackward();
+        return;
+      }
+    }
 
     let targetScroll = currentScroll;
 
@@ -174,85 +225,6 @@ export default function App() {
       setLoadingProgress(progress);
     }, 150);
     return () => clearInterval(interval);
-  }, []);
-
-  // Efeito Realista Imersivo de "Pressão na Tela" e Drag-to-Scroll (Arrastar a tela inteira)
-  useEffect(() => {
-    // Detect mobile touch devices safely to bypass synthetic drag scrolling and keep native inertial touch scroll
-    const isTouchDevice =
-      typeof window !== "undefined" &&
-      ("ontouchstart" in window || navigator.maxTouchPoints > 0 || window.innerWidth < 1024);
-
-    if (isTouchDevice) {
-      return;
-    }
-
-    const ui = uiContainerRef.current;
-    const vc = videoContainerRef.current;
-
-    let isDraggingScreen = false;
-    let startY = 0;
-    let initialScrollY = 0;
-
-    const pressDown = (e: Event) => {
-      if (document.querySelector(".terminal-modal")) return;
-      if ((e.target as HTMLElement).closest(".scroll-middle-card")) return;
-      if ((e.target as HTMLElement).closest(".terminal-modal")) return;
-
-      const evt = e as PointerEvent;
-      if (evt.clientX > window.innerWidth - 20) return;
-
-      isDraggingScreen = true;
-      startY = evt.clientY;
-      initialScrollY = window.scrollY;
-
-      gsap.to([ui, vc], {
-        scale: 0.98,
-        filter: "brightness(0.9)",
-        duration: 0.4,
-        ease: "power2.out",
-        transformOrigin: "center center",
-      });
-
-      document.body.style.userSelect = "none";
-    };
-
-    const pressMove = (e: Event) => {
-      if (!isDraggingScreen) return;
-      // Impede arrasto se estiver tentando rolagem horizontal no carrossel
-      if ((e.target as HTMLElement).closest(".scroll-middle-card")) return;
-
-      const evt = e as PointerEvent;
-      const dy = evt.clientY - startY;
-      window.scrollTo({
-        top: initialScrollY - dy * 1.5, // Multiplicador para sensação um pouco mais sensível
-        behavior: "auto",
-      });
-    };
-
-    const pressUp = () => {
-      isDraggingScreen = false;
-      document.body.style.userSelect = "";
-
-      gsap.to([ui, vc], {
-        scale: 1,
-        filter: "brightness(1)",
-        duration: 0.7,
-        ease: "elastic.out(1.1, 0.4)",
-      });
-    };
-
-    window.addEventListener("pointerdown", pressDown, { passive: true });
-    window.addEventListener("pointermove", pressMove, { passive: false });
-    window.addEventListener("pointerup", pressUp, { passive: true });
-    window.addEventListener("pointercancel", pressUp, { passive: true });
-
-    return () => {
-      window.removeEventListener("pointerdown", pressDown);
-      window.removeEventListener("pointermove", pressMove);
-      window.removeEventListener("pointerup", pressUp);
-      window.removeEventListener("pointercancel", pressUp);
-    };
   }, []);
 
   const openTerminal = () => {
@@ -464,22 +436,15 @@ export default function App() {
         let reqId: number | null = null;
         let isHeadlineVisible = true;
 
-        const isTouch =
-          typeof window !== "undefined" &&
-          ("ontouchstart" in window || navigator.maxTouchPoints > 0 || window.innerWidth < 1024);
-
         // Loop de sincronização total: a UI segue o vídeo milimetricamente!
         const syncLoop = () => {
-          if (!video || isTouch) return;
+          if (!video) return;
 
           let ct = video.currentTime;
           tl.time(ct); // Sincroniza a timeline da UI com o vídeo
 
-          // Se o vídeo chegar ao fim no modo forward, pausa
-          if (
-            playState === 1 &&
-            ct >= (video.duration > 0 ? video.duration - 0.1 : 7.2)
-          ) {
+          // Sincroniza breathing class do container principal
+          if (playState === 1 && ct >= (video.duration > 0 ? video.duration - 0.1 : 7.2)) {
             video.pause();
             introCompletedRef.current = true;
 
@@ -496,12 +461,8 @@ export default function App() {
                 repeat: -1,
               });
             }
-          } else if (
-            playState === -1 ||
-            playState === 0 ||
-            (playState === 1 &&
-              ct < (video.duration > 0 ? video.duration - 0.2 : 7.0))
-          ) {
+          } else {
+            // Remove breathing class se não estiver no fim ou estiver voltando
             if (
               videoContainerRef.current &&
               videoContainerRef.current.classList.contains("breathing-active")
@@ -514,246 +475,178 @@ export default function App() {
                 ease: "power2.out",
               });
             }
-          } else if (playState === -1) {
+          }
+
+          // Controle do playState de retrocesso manual
+          if (playState === -1) {
             video.pause();
-            video.currentTime = Math.max(0, video.currentTime - 0.08); // Manual reverse
+            if (ct <= 0.05) {
+              playState = 0;
+              video.currentTime = 0;
+              introCompletedRef.current = false;
+            } else {
+              // Velocidade de retrocesso
+              video.currentTime = Math.max(0, video.currentTime - 0.12);
+            }
           }
 
           reqId = requestAnimationFrame(syncLoop);
         };
 
-        // isTouch is already declared above, so we can use it directly
-        ScrollTrigger.create({
-          trigger: containerRef.current,
-          start: "top top",
-          end: "bottom bottom",
-          onUpdate: (self) => {
-            if (!video) return;
+        
+        const triggerForward = () => {
+          if (playState === 0) {
+             // trigger forward
+             playState = 1;
+             isHeadlineVisible = false;
+             
+             if (headlineItems && headlineItems.length > 0) {
+               gsap.killTweensOf(headlineItems);
+               gsap.to(headlineItems, {
+                 opacity: 0,
+                 scale: 1.08,
+                 filter: "blur(6px)",
+                 y: -40,
+                 duration: 0.8,
+                 stagger: 0.05,
+                 ease: "power2.out",
+                 overwrite: "auto",
+               });
+             }
+             gsap.to(".scroll-prompt", { opacity: 0, autoAlpha: 0, duration: 0.3 });
+             
+             gsap.killTweensOf(video);
+             video.play().catch(() => {});
+             if (!reqId) syncLoop();
+          }
+        };
 
-            // --- MOBILE DIRECT SCRUB FLOW ---
-            if (isTouch) {
-              // Both text and video strictly respect scroll position.
-              tl.progress(self.progress);
-              
-              const vDuration = video.duration > 0 ? video.duration : 7.2;
-              const targetTime = self.progress * vDuration;
-              
-              // Smoothly scrub video time to prevent frame locking
-              video.currentTime = targetTime;
-
-              if (self.progress > 0.04) {
-                if (isHeadlineVisible) {
-                  isHeadlineVisible = false;
-                  if (headlineItems && headlineItems.length > 0) {
-                    gsap.killTweensOf(headlineItems);
-                    gsap.to(headlineItems, {
-                      opacity: 0,
-                      scale: 1.08,
-                      filter: "blur(6px)",
-                      y: -40,
-                      duration: 0.8,
-                      stagger: 0.05,
-                      ease: "power2.out",
-                      overwrite: "auto",
-                    });
-                  }
-                  gsap.to(".scroll-prompt", { opacity: 0, autoAlpha: 0, duration: 0.3 });
-                }
-              } else {
-                if (!isHeadlineVisible) {
-                  isHeadlineVisible = true;
-                  if (headlineItems && headlineItems.length > 0) {
-                    gsap.killTweensOf(headlineItems);
-                    gsap.to(headlineItems, {
-                      opacity: 1,
-                      scale: 1,
-                      filter: "blur(0px)",
-                      y: 0,
-                      duration: 0.8,
-                      stagger: 0.05,
-                      ease: "power2.out",
-                      overwrite: "auto",
-                    });
-                  }
-                  gsap.to(".scroll-prompt", { opacity: 1, autoAlpha: 1, duration: 0.4 });
-                }
-              }
-
-              if (self.progress >= 0.98) {
-                introCompletedRef.current = true;
-                if (
-                  videoContainerRef.current &&
-                  !videoContainerRef.current.classList.contains("breathing-active")
-                ) {
-                  videoContainerRef.current.classList.add("breathing-active");
-                  gsap.to(videoContainerRef.current, { scale: 1.015, duration: 25, ease: "sine.inOut", yoyo: true, repeat: -1 });
-                }
-              } else {
-                introCompletedRef.current = false;
-                if (
-                  videoContainerRef.current &&
-                  videoContainerRef.current.classList.contains("breathing-active")
-                ) {
-                  videoContainerRef.current.classList.remove("breathing-active");
-                  gsap.killTweensOf(videoContainerRef.current, "scale");
-                  gsap.to(videoContainerRef.current, { scale: 1, duration: 2.5, ease: "power2.out" });
-                }
-              }
-              return;
-            }
-
-            // --- DESKTOP SYNCHRONIZATION FLOW ---
-            // Se chegou ao topo absoluto (Hero) ou extremamente perto (essencial para mobile bounce)
-            if (self.progress < 0.04) {
-              if (playState !== 0 || !isHeadlineVisible) {
-                playState = 0;
-                video.pause();
-                gsap.killTweensOf(video);
-                video.currentTime = 0;
-                tl.time(0);
-
-                isHeadlineVisible = true;
-                if (headlineItems && headlineItems.length > 0) {
-                  gsap.killTweensOf(headlineItems);
-                  gsap.to(headlineItems, {
-                    opacity: 1,
-                    scale: 1,
-                    filter: "blur(0px)",
-                    y: 0,
-                    duration: 0.6,
-                    stagger: 0.03,
-                    ease: "power2.out",
-                    overwrite: "auto",
-                  });
-                }
-
-                gsap.to(".scroll-prompt", {
-                  opacity: 1,
-                  autoAlpha: 1,
-                  duration: 0.4,
-                  ease: "power2.out",
-                  overwrite: "auto",
-                });
-                introCompletedRef.current = false;
-              }
-              return;
-            }
-
-            // Esconde os indicadores de scroll assim que começa a rolar
-            if (self.progress > 0.005) {
-              gsap.to(".scroll-prompt", {
-                opacity: 0,
-                autoAlpha: 0,
-                duration: 0.3,
-                ease: "power2.out",
-                overwrite: "auto",
-              });
-            } else {
-              gsap.to(".scroll-prompt", {
+        const triggerBackward = () => {
+          if (playState === 1 || playState === 0 || introCompletedRef.current) {
+            playState = -1;
+            introCompletedRef.current = false;
+            isHeadlineVisible = true;
+            
+            if (headlineItems && headlineItems.length > 0) {
+              gsap.killTweensOf(headlineItems);
+              gsap.to(headlineItems, {
                 opacity: 1,
-                autoAlpha: 1,
-                duration: 0.4,
+                scale: 1,
+                filter: "blur(0px)",
+                y: 0,
+                duration: 0.8,
+                stagger: 0.05,
                 ease: "power2.out",
                 overwrite: "auto",
               });
             }
-
-            if (self.direction === 1) {
-              // Animates out the hero texts immediately and smoothly, only if currently visible
-              if (self.progress > 0.01 && isHeadlineVisible) {
-                isHeadlineVisible = false;
-                if (headlineItems && headlineItems.length > 0) {
-                  gsap.killTweensOf(headlineItems);
-                  gsap.to(headlineItems, {
-                    opacity: 0,
-                    scale: 1.08,
-                    filter: "blur(6px)",
-                    y: -40,
-                    duration: 0.8,
-                    stagger: 0.05,
-                    ease: "power2.out",
-                    overwrite: "auto",
-                  });
-                }
-              }
-
-              // Scroll Atua como um "Play" para iniciar toda a experiência visual organicamente
-              if (playState !== 1) {
-                playState = 1;
-                gsap.killTweensOf(video);
-                video.play().catch(() => {});
-                if (!reqId) syncLoop();
-
-                // Completa a rolagem automaticamente para o final da section (Apenas para desktop sem toque!)
-                if (
-                  !isTouch &&
-                  containerRef.current &&
-                  window.scrollY < containerRef.current.scrollHeight * 0.8
-                ) {
-                  window.scrollTo({
-                    top: containerRef.current.scrollHeight,
-                    behavior: "smooth",
-                   });
-                }
-              }
-            } else if (self.direction === -1 && self.progress < 0.95) {
-              // Animates the hero texts back in beautifully with zero latency, only once on boundary
-              if (self.progress < 0.9 && !isHeadlineVisible) {
-                isHeadlineVisible = true;
-                if (headlineItems && headlineItems.length > 0) {
-                  gsap.killTweensOf(headlineItems);
-                  gsap.to(headlineItems, {
-                    opacity: 1,
-                    scale: 1,
-                    filter: "blur(0px)",
-                    y: 0,
-                    duration: 0.8,
-                    stagger: 0.05,
-                    ease: "power2.out",
-                    overwrite: "auto",
-                  });
-                }
-              }
-
-              // Scroll Reverso -> Rewind fluido
-              if (playState !== -1) {
-                playState = -1;
-                video.pause();
-                gsap.killTweensOf(video);
-
-                gsap.to(video, {
-                  currentTime: 0,
-                  duration: video.currentTime * 0.5,
-                  ease: "none",
-                  overwrite: "auto",
-                  onComplete: () => {
-                    playState = 0;
-                  },
-                });
-
-                if (!reqId) syncLoop();
-
-                // Scroll automático de volta para o topo (Apenas no desktop!)
-                if (!isTouch && window.scrollY > 0) {
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }
-              }
-            }
-
+            gsap.to(".scroll-prompt", { opacity: 1, autoAlpha: 1, duration: 0.4 });
+            
+            video.pause();
             if (!reqId) syncLoop();
+          }
+        };
 
-            // Ativa o breathing mode se o progresso estiver próximo do final
-            if (self.progress >= 0.98) {
-              introCompletedRef.current = true;
-            } else {
-              introCompletedRef.current = false;
+        // Expose triggers globally for handlers
+        (window as any)._triggerForward = triggerForward;
+        (window as any)._triggerBackward = triggerBackward;
+
+        const handleInteraction = (e: any) => {
+          if (!video) return;
+          // If playState is 0, any touch, click, mousedown or drag triggers it
+          if (playState === 0) {
+            triggerForward();
+          }
+        };
+
+        let lastWheelTime = 0;
+        const handleWheel = (e: WheelEvent) => {
+          if (!video) return;
+
+          if (playState === 0) {
+            // Any scroll action on laptop trackpad/mousepad triggers transition
+            triggerForward();
+            return;
+          }
+
+          // If intro is completed, scroll wheel/trackpad anywhere changes cards
+          if (introCompletedRef.current) {
+            const now = Date.now();
+            if (now - lastWheelTime > 650) {
+              if (Math.abs(e.deltaY) > 8 || Math.abs(e.deltaX) > 8) {
+                const ele = carouselScrollRef.current;
+                const isFirstCard = ele ? ele.scrollLeft <= 10 : true;
+
+                if (e.deltaY > 0 || e.deltaX > 0) {
+                  scrollCarouselNext();
+                } else {
+                  if (isFirstCard) {
+                    triggerBackward();
+                  } else {
+                    scrollCarouselPrev();
+                  }
+                }
+                lastWheelTime = now;
+              }
             }
-          },
-        });
+          }
+        };
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+          if (!video) return;
+
+          if (playState === 0) {
+            const forwardKeys = ["ArrowDown", "ArrowRight", " ", "PageDown", "Enter"];
+            if (forwardKeys.includes(e.key)) {
+              e.preventDefault();
+              triggerForward();
+            }
+          } else if (introCompletedRef.current) {
+            if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+              e.preventDefault();
+              scrollCarouselNext();
+            } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+              e.preventDefault();
+              const ele = carouselScrollRef.current;
+              const isFirstCard = ele ? ele.scrollLeft <= 10 : true;
+              if (isFirstCard) {
+                triggerBackward();
+              } else {
+                scrollCarouselPrev();
+              }
+            }
+          }
+        };
+
+        window.addEventListener("wheel", handleWheel, { passive: true });
+        window.addEventListener("touchstart", handleInteraction, { passive: true });
+        window.addEventListener("touchmove", handleInteraction, { passive: true });
+        window.addEventListener("mousedown", handleInteraction);
+        window.addEventListener("click", handleInteraction);
+        window.addEventListener("keydown", handleKeyDown);
+
+        // Make scroll prompt clickable as a high-visibility backup click target
+        const scrollPromptEl = document.querySelector(".scroll-prompt");
+        if (scrollPromptEl) {
+          scrollPromptEl.classList.remove("pointer-events-none");
+          scrollPromptEl.classList.add("pointer-events-auto", "cursor-pointer");
+          scrollPromptEl.addEventListener("click", triggerForward);
+        }
 
         // Limpeza segura da animação
         (video as any)._cleanupCustom = () => {
           if (reqId) cancelAnimationFrame(reqId);
+          window.removeEventListener("wheel", handleWheel);
+          window.removeEventListener("touchstart", handleInteraction);
+          window.removeEventListener("touchmove", handleInteraction);
+          window.removeEventListener("mousedown", handleInteraction);
+          window.removeEventListener("click", handleInteraction);
+          window.removeEventListener("keydown", handleKeyDown);
+          if (scrollPromptEl) {
+            scrollPromptEl.removeEventListener("click", triggerForward);
+          }
+          delete (window as any)._triggerForward;
+          delete (window as any)._triggerBackward;
         };
 
         // Auto-play de segurança se já estiver scrollado
@@ -981,7 +874,7 @@ export default function App() {
       {/* Virtual Scroll Track */}
       <div
         ref={containerRef}
-        className="relative h-[115vh] md:h-[120vh] bg-gradient-to-br from-[#1e0524] via-[#0f0111] to-[#1f0701] font-sans selection:bg-[#FF4500]/40 text-white overflow-x-clip"
+        className="relative h-[100dvh] bg-gradient-to-br from-[#1e0524] via-[#0f0111] to-[#1f0701] font-sans select-none selection:bg-[#FF4500]/40 text-white overflow-x-clip"
       >
         {/* Cinematic Tech Overlays */}
         <div className="fixed inset-0 noise-bg pointer-events-none z-10"></div>
@@ -1397,7 +1290,7 @@ export default function App() {
                     strokeLinejoin="round"
                   />
                 </svg>
-                <span>Arraste para explorar</span>
+                <span>Deslize para explorar</span>
                 <svg
                   width="12"
                   height="12"
@@ -1418,26 +1311,7 @@ export default function App() {
               <div className="w-full relative max-w-[100vw] sm:max-w-7xl mx-auto flex items-center">
                 {/* Left Arrow */}
                 <button
-                  onClick={() => {
-                    const ele = carouselScrollRef.current;
-                    if (ele) {
-                      const step = getCardStepWidth();
-                      // Round current scroll to closest card step, then subtract 1 step
-                      let targetScroll =
-                        Math.round(ele.scrollLeft / step) * step - step;
-                      if (targetScroll < -20) {
-                        const maxScroll = ele.scrollWidth - ele.clientWidth;
-                        targetScroll = maxScroll;
-                      }
-                      targetScroll = Math.round(targetScroll / step) * step;
-                      gsap.to(ele, {
-                        scrollLeft: targetScroll,
-                        duration: 0.55,
-                        ease: "power2.out",
-                        overwrite: "auto",
-                      });
-                    }
-                  }}
+                  onClick={scrollCarouselPrev}
                   className="absolute -left-2 sm:left-2 md:left-6 lg:left-8 z-50 p-2 sm:p-3 rounded-full bg-black/40 border border-white/10 backdrop-blur-md text-white/70 hover:text-white hover:bg-black/60 hover:border-[#FF4500]/50 hover:scale-110 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300 flex pointer-events-auto shadow-lg shadow-black/50"
                   aria-label="Anterior"
                 >
@@ -1507,27 +1381,7 @@ export default function App() {
 
                 {/* Right Arrow */}
                 <button
-                  onClick={() => {
-                    const ele = carouselScrollRef.current;
-                    if (ele) {
-                      const step = getCardStepWidth();
-                      const maxScroll = ele.scrollWidth - ele.clientWidth;
-                      // Round current scroll to closest card step, then add 1 step
-                      let targetScroll =
-                        Math.round(ele.scrollLeft / step) * step + step;
-                      if (targetScroll >= maxScroll + 20) {
-                        targetScroll = 0;
-                      }
-                      targetScroll = Math.round(targetScroll / step) * step;
-                      targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
-                      gsap.to(ele, {
-                        scrollLeft: targetScroll,
-                        duration: 0.55,
-                        ease: "power2.out",
-                        overwrite: "auto",
-                      });
-                    }
-                  }}
+                  onClick={scrollCarouselNext}
                   className="absolute -right-2 sm:right-2 md:right-6 lg:right-8 z-50 p-2 sm:p-3 rounded-full bg-black/40 border border-white/10 backdrop-blur-md text-white/70 hover:text-white hover:bg-black/60 hover:border-[#FF4500]/50 hover:scale-110 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300 flex pointer-events-auto shadow-lg shadow-black/50"
                   aria-label="Próximo"
                 >

@@ -1,0 +1,13 @@
+35:  const [activeTab, setActiveTab] = useState<'prompts' | 'models' | 'creations' | 'automations' | 'productivity'>('prompts');
+206:    if (activeTab === 'prompts' && allPromptsList.length > 0) {
+210:    } else if (activeTab === 'models' && filteredModels.length > 0) {
+216:  }, [activeTab, searchQuery]);
+355:    if (activeTab === 'models' && selectedModelId) {
+361:  }, [activeTab, selectedModelId]);
+508:              const isActive = activeTab === cat.id;
+559:                      const isActive = activeTab === cat.id;
+615:                     placeholder={`Pesquisar na guia ${categories.find(c=>c.id===activeTab)?.label}...`}
+632:                    {activeTab === 'prompts' && allPromptsList.length}
+633:                    {activeTab === 'models' && filteredModels.length}
+643:                      {activeTab === 'prompts' && (
+1347:                      {activeTab === 'models' && (

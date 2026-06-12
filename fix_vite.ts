@@ -1,13 +1,8 @@
-import { VitePWA } from 'vite-plugin-pwa';
-import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
-import {defineConfig, loadEnv} from 'vite';
+import * as fs from 'fs';
 
-export default defineConfig(({mode}) => {
-  const env = loadEnv(mode, '.', '');
-  return {
-    plugins: [
+let code = fs.readFileSync('vite.config.ts', 'utf-8');
+code = `import { VitePWA } from 'vite-plugin-pwa';\n` + code;
+code = code.replace(/plugins: \[react\(\), tailwindcss\(\)\],/, `plugins: [
       react(), 
       tailwindcss(),
       VitePWA({
@@ -37,7 +32,7 @@ export default defineConfig(({mode}) => {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
           runtimeCaching: [
             {
-              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+              urlPattern: /^https:\\/\\/fonts\\.googleapis\\.com\\/.*/i,
               handler: 'CacheFirst',
               options: {
                 cacheName: 'google-fonts-cache',
@@ -51,7 +46,7 @@ export default defineConfig(({mode}) => {
               }
             },
             {
-              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+              urlPattern: /^https:\\/\\/fonts\\.gstatic\\.com\\/.*/i,
               handler: 'CacheFirst',
               options: {
                 cacheName: 'gstatic-fonts-cache',
@@ -67,19 +62,5 @@ export default defineConfig(({mode}) => {
           ]
         }
       })
-    ],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-    },
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, '.'),
-      },
-    },
-    server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
-    },
-  };
-});
+    ],`);
+fs.writeFileSync('vite.config.ts', code);

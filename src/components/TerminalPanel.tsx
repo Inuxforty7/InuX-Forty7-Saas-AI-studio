@@ -21,11 +21,13 @@ import {
   Plus,
   Play,
   ArrowRight,
+  ArrowDown,
   ArrowLeft,
   MessageSquare,
   Smartphone,
   Eye,
-  Bot
+  Bot,
+  ExternalLink
 } from 'lucide-react';
 import { ecosystemData, PromptItem, ModelComparison, CreationGuide, AutomationTool, ProductivityHack } from '../data/ecosystem';
 
@@ -33,13 +35,12 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
   const [activeTab, setActiveTab] = useState<'prompts' | 'models' | 'creations' | 'automations' | 'productivity'>('prompts');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string>('');
+  const [isWorkflowExpanded, setIsWorkflowExpanded] = useState<boolean>(true);
   
   // Immersive Split Selection states
-  const [selectedPromptId, setSelectedPromptId] = useState<string>('img-01');
-  const [selectedModelId, setSelectedModelId] = useState<string>('mod-01');
-  const [selectedCreationId, setSelectedCreationId] = useState<string>('cre-01');
-  const [selectedAutomationId, setSelectedAutomationId] = useState<string>('aut-01');
-  const [selectedProductivityId, setSelectedProductivityId] = useState<string>('pro-01');
+  const [selectedPromptId, setSelectedPromptId] = useState<string>('workflow-3d');
+  const [selectedModelId, setSelectedModelId] = useState<string>('m-1');
+  
   
   // Mobile responsive layout mode: show list or details
   const [mobileViewMode, setMobileViewMode] = useState<'list' | 'detail'>('list');
@@ -50,16 +51,58 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
   const [tutorialIsRunning, setTutorialIsRunning] = useState<boolean>(false);
   
   // Live Playground Model simulator states
-  const [selectedPlaygroundModel, setSelectedPlaygroundModel] = useState<string>('mod-01');
+  const [selectedPlaygroundModel, setSelectedPlaygroundModel] = useState<string>('m-1');
   const [playgroundInput, setPlaygroundInput] = useState<string>('code_design');
   const [playgroundOutputText, setPlaygroundOutputText] = useState<string>('');
   const [isTypingPlayground, setIsTypingPlayground] = useState<boolean>(false);
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Live Creations states
-  const [activeCreationDemoId, setActiveCreationDemoId] = useState<string | null>(null);
-  const [threeJsSpeed, setThreeJsSpeed] = useState<number>(1);
   const [clicksCount, setClicksCount] = useState<number>(0);
+
+  // Mobile Scroll Hint State
+  const [showMobileScrollHint, setShowMobileScrollHint] = useState<boolean>(true);
+  const modalScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleScroll = (e: Event) => {
+      // Any captured scroll event should hide the hint if it comes from inside the modal
+      if (showMobileScrollHint && modalScrollRef.current && modalScrollRef.current.contains(e.target as Node)) {
+        setShowMobileScrollHint(false);
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll, true); // true for capture phase to catch non-bubbling scroll events
+    return () => window.removeEventListener('scroll', handleScroll, true);
+  }, [showMobileScrollHint]);
+
+  useEffect(() => {
+    if (mobileViewMode !== 'detail') {
+      setShowMobileScrollHint(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const detailView = modalScrollRef.current?.querySelector('.mobile-slide-detail:not(.hidden)');
+      const detailScroll = detailView?.querySelector('.custom-scroll, .overflow-y-auto, [class*="overflow-y-auto"]') as HTMLElement | null;
+      const scrollElement = detailScroll || detailView as HTMLElement | null;
+      
+      if (scrollElement) {
+        const isScrollable = scrollElement.scrollHeight > scrollElement.clientHeight + 10;
+        setShowMobileScrollHint(isScrollable);
+        
+        if (isScrollable) {
+          setTimeout(() => {
+            setShowMobileScrollHint(false);
+          }, 4500);
+        }
+      } else {
+        setShowMobileScrollHint(false);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [selectedPromptId, selectedModelId, mobileViewMode]);
   
   // Live Automations simulator states
   const [runningAutomationId, setRunningAutomationId] = useState<string | null>(null);
@@ -91,12 +134,9 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
   };
 
   // Navigations categories for sidebar layout
-  const categories = [
-    { id: 'prompts', label: 'PACK CINEMATOGRÁFICO', icon: <ImageIcon size={14} />, desc: 'Comandos visuais de elite' },
-    { id: 'models', label: 'GUIA DA ELITE (I.A. MODELS)', icon: <Cpu size={14} />, desc: 'Curadoria de modelos líderes' },
-    { id: 'creations', label: 'MÁQUINA DE CRIAÇÃO (3D/APP)', icon: <Globe size={14} />, desc: 'Blueprints de 3D, Mobile e Vídeo' },
-    { id: 'automations', label: 'COFRE DE AUTOMOTORES', icon: <Scissors size={14} />, desc: 'Automações pragmáticas copy-paste' },
-    { id: 'productivity', label: 'HACKS DE PRODUTIVIDADE', icon: <Zap size={14} />, desc: 'Flutuação operacional direta' },
+      const categories = [
+    { id: 'prompts', label: 'TUTORIAIS & WORKFLOWS', icon: <Globe size={14} />, desc: 'Passo a passo para gerar seu site ou imagens' },
+    { id: 'models', label: 'MODELOS DE INTELIGÊNCIA ARTIFICIAL', icon: <Cpu size={14} />, desc: 'Veja e compare as inteligências artificiais' },
   ];
 
   // Search Filters
@@ -108,6 +148,44 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
     );
   }, [searchQuery]);
 
+  const allPromptsList = useMemo(() => {
+    const special = {
+      id: 'workflow-3d',
+      title: 'WORKFLOW: WEB ARCHITECT 3D (SCROLLYTELLING)',
+      idealModel: 'Gemini 3.1 Pro',
+      tags: ['3D', 'SCROLLYTELLING', 'WORKFLOW'],
+      description: 'Pipeline operacional imersivo para clonar e reestruturar interfaces 3D de alta-fidelidade.',
+      howToUse: 'Siga os passos operacionais do pipeline e utilize um dos packs de payload de injeção direta.'
+    };
+    
+    const special2 = {
+      id: 'workflow-vfx',
+      title: 'BLUEPRINT MESTRE: CLONAGEM VFX DE ALTA FIDELIDADE',
+      idealModel: 'Nano Banana 2',
+      tags: ['VFX', 'IMAGE', 'FACE SWAP'],
+      description: 'Protocolos exatos para substituições faciais fotorealistas em qualquer pessoa.',
+      howToUse: 'Siga o fluxo no painel Flow e copie o bloco de prompt correspondente à cena.'
+    };
+
+    const special3 = {
+      id: 'workflow-deploy',
+      title: 'ECOSSISTEMA & PIPELINE DE DEPLOYMENT',
+      idealModel: 'Antigravity IDE',
+      tags: ['DEPLOY', 'GIT', 'VERCEL', 'ECOSSISTEMA'],
+      description: 'Fluxo final: da geração no AI Studio para gestão no Github e deploy direto na Vercel.',
+      howToUse: 'Siga a instrução de sync ou exportação zipada para integração local ou remota.'
+    };
+
+    const matchesSearch = (item: any) => 
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const specials = [special, special2, special3].filter(matchesSearch);
+
+    return [...specials, ...filteredPrompts];
+  }, [filteredPrompts, searchQuery]);
+
   const filteredModels = useMemo(() => {
     return ecosystemData.models.filter(item => 
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -115,53 +193,24 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
     );
   }, [searchQuery]);
 
-  const filteredCreations = useMemo(() => {
-    return ecosystemData.creations.filter(item => 
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      item.description.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      item.promptToCopy.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [searchQuery]);
+  
 
-  const filteredAutomations = useMemo(() => {
-    return ecosystemData.automations.filter(item => 
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      item.description.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      item.codeToCopy.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [searchQuery]);
+  
 
-  const filteredProductivity = useMemo(() => {
-    return ecosystemData.productivity.filter(item => 
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      item.scenario.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      item.promptToCopy.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [searchQuery]);
+  
 
-  // If tab changes, let's auto-select first of search query
+    // If tab changes, let's auto-select first of search query
   useEffect(() => {
     setMobileViewMode('list');
-    if (activeTab === 'prompts' && filteredPrompts.length > 0) {
-      if (!filteredPrompts.some(p => p.id === selectedPromptId)) {
-        setSelectedPromptId(filteredPrompts[0].id);
+    document.querySelector('.terminal-modal')?.scrollTo({top: 0, behavior: 'instant'});
+    if (activeTab === 'prompts' && allPromptsList.length > 0) {
+      if (!allPromptsList.some(p => p.id === selectedPromptId)) {
+        setSelectedPromptId(allPromptsList[0].id);
       }
     } else if (activeTab === 'models' && filteredModels.length > 0) {
       if (!filteredModels.some(m => m.id === selectedModelId)) {
         setSelectedModelId(filteredModels[0].id);
         setSelectedPlaygroundModel(filteredModels[0].id);
-      }
-    } else if (activeTab === 'creations' && filteredCreations.length > 0) {
-      if (!filteredCreations.some(c => c.id === selectedCreationId)) {
-        setSelectedCreationId(filteredCreations[0].id);
-      }
-    } else if (activeTab === 'automations' && filteredAutomations.length > 0) {
-      if (!filteredAutomations.some(a => a.id === selectedAutomationId)) {
-        setSelectedAutomationId(filteredAutomations[0].id);
-      }
-    } else if (activeTab === 'productivity' && filteredProductivity.length > 0) {
-      if (!filteredProductivity.some(p => p.id === selectedProductivityId)) {
-        setSelectedProductivityId(filteredProductivity[0].id);
       }
     }
   }, [activeTab, searchQuery]);
@@ -171,7 +220,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
     switch (id) {
       case 'img-01': // Cyber-Noir High Fashion
         return (
-          <div className="relative w-full h-24 rounded bg-[#030107] border border-white/5 overflow-hidden flex flex-col justify-between p-2 flex-shrink-0">
+          <div className="relative w-full h-24 rounded hidden sm:flex bg-[#030107] border border-white/5 overflow-clip flex flex-col justify-between p-2 flex-shrink-0">
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#FF0055]/5 to-transparent bg-[size:100%_40px] animate-[scanMove_6s_infinite_linear]"></div>
             <div className="absolute top-4 right-1/4 w-12 h-[1px] bg-cyan-400 opacity-20 blur-[1px]"></div>
             <div className="absolute bottom-6 left-12 w-8 h-[2px] bg-[#FF4500] opacity-30 blur-[1px]"></div>
@@ -191,7 +240,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
         );
       case 'img-02': // Brutalist Cave
         return (
-          <div className="relative w-full h-24 rounded bg-[#07070a] border border-white/5 overflow-hidden flex flex-col justify-between p-2 flex-shrink-0">
+          <div className="relative w-full h-24 rounded hidden sm:flex bg-[#07070a] border border-white/5 overflow-clip flex flex-col justify-between p-2 flex-shrink-0">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(255,69,0,0.1),transparent_70%)]"></div>
             <div className="absolute w-[50px] h-[90px] bg-zinc-900 border-r border-white/10 skew-y-[12deg] top-[-10px] left-[-5px]"></div>
             <div className="absolute w-[70px] h-[60px] bg-zinc-950 border-t border-white/10 -skew-x-[20deg] bottom-[-5px] right-[2px]"></div>
@@ -210,7 +259,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
         );
       case 'img-03': // Hardware microchip
         return (
-          <div className="relative w-full h-24 rounded bg-[#040810] border border-white/5 overflow-hidden flex flex-col justify-between p-2 flex-shrink-0">
+          <div className="relative w-full h-24 rounded hidden sm:flex bg-[#040810] border border-white/5 overflow-clip flex flex-col justify-between p-2 flex-shrink-0">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,240,255,0.08),transparent_60%)]"></div>
             <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.15) 1px, transparent 1px)', backgroundSize: '8px 8px' }}></div>
             <div className="text-[6.5px] font-mono text-white/40 tracking-widest">[MACRO_PRODUCT_HARDWARE]</div>
@@ -232,7 +281,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
         );
       default:
         return (
-          <div className="relative w-full h-24 rounded bg-[#080d16] border border-white/5 overflow-hidden flex flex-col justify-between p-2 flex-shrink-0">
+          <div className="relative w-full h-24 rounded hidden sm:flex bg-[#080d16] border border-white/5 overflow-clip flex flex-col justify-between p-2 flex-shrink-0">
             <div className="absolute top-0 left-0 w-2 h-2 bg-[#FF4500]/50"></div>
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,69,0,0.04),transparent_80%)]"></div>
             <div className="flex justify-between items-start z-10">
@@ -285,7 +334,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
     if (inputType === 'code_design') {
       generatedAnswer = `// Gerado em alta-definição pelo ${modelName}:\nimport React from 'react';\nimport { motion } from 'framer-motion';\n\nexport default function EliteGrid() {\n  return (\n    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-[#01050D] border border-[#FF4500]/20 rounded">\n      <div className="p-4 border-l-2 border-[#FF4500] bg-black/60">\n        <h3 className="text-white font-mono uppercase text-xs font-black">Mecanismo Ativo</h3>\n        <p className="text-white/60 text-[10px] uppercase">Ajuste de bento-grid modular ultra-polido</p>\n      </div>\n    </div>\n  );\n}`;
     } else if (inputType === 'copy') {
-      generatedAnswer = `--- MENSAGEM DO DIRETO DE CONVERSÃO // ${modelName} ---\n\n🚨 Pare de queimar dinheiro em tráfego com landing pages de 2012.\n\nSabe por que seu cliente clica no link e foge em 3 segundos?\nPelo cansaço visual. \n\nCopie nosso framework e assuma o controle da conversão agora.`;
+      generatedAnswer = `--- MENSAGEM DO DEPARTAMENTO DE DESIGN TRIDIMENSIONAL // ${modelName} ---\n\n🚨 Pare de desperdiçar tráfego qualificado com templates estáticos e sem vida.\n\nSabe por que marcas de luxo e tecnologia convertem acima da média?\nPelo scrollytelling interativo tridimensional. A explosão modular de produtos retém a atenção e convence o cliente instantaneamente.\n\nCopie nossos payloads operacionais e controle o comportamento visual da sua aplicação com a suíte de prompts INUX FORTY7 no Gemini 3.1 Pro.`;
     } else {
       generatedAnswer = `// DIAGRAMA DE PAINEL DE CONTEXTO ULTRA-ALTO [${modelName}]\n> Servidor Inbound HTTP 200 ligado em 47Hz\n> Sincronização milimétrica de estados via webhooks do Make.com\n> Banco relacional mapeado e indexado sem latency buffers.`;
     }
@@ -340,7 +389,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#03070D] font-mono text-white flex flex-col overflow-hidden selection:bg-[#FF4500] selection:text-white terminal-modal">
+    <div ref={modalScrollRef} className="fixed inset-0 z-[100] bg-[#03070D] font-mono text-white flex flex-col overflow-y-auto lg:overflow-clip selection:bg-[#FF4500] selection:text-white terminal-modal custom-scroll">
       
       {/* Scrollbar & blinker style inject */}
       <style>{`
@@ -368,6 +417,23 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
         }
       `}</style>
 
+      {/* MOBILE SCROLL HINT OVERLAY */}
+      <AnimatePresence>
+        {showMobileScrollHint && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] pointer-events-none flex flex-col items-center justify-center gap-1.5 drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]"
+          >
+            <div className="bg-[#FF4500]/90 text-white font-mono text-[9px] font-bold tracking-widest px-3 py-1.5 rounded-full border border-white/20 uppercase flex items-center gap-1.5 shadow-[0_0_15px_rgba(255,69,0,0.5)]">
+               <span>ROLE PARA VER MAIS</span>
+               <ArrowDown size={10} className="animate-bounce" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Holographic Overlays */}
       <div className="absolute inset-0 pointer-events-none z-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,69,0,0.01)_0%,rgba(0,0,0,0.92)_100%)]"></div>
@@ -388,7 +454,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
       <div className="absolute bottom-4 right-4 w-6 h-6 border-b border-r border-[#FF4500]/40 pointer-events-none z-50"></div>
 
       {/* Main Screen Container Frame */}
-      <div className="relative z-10 w-full max-w-[1500px] h-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5 flex flex-col min-h-0 justify-between">
+      <div className="relative z-10 w-full max-w-[1500px] min-h-[100vh] lg:h-full lg:min-h-0 mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5 flex flex-col justify-start lg:justify-between">
         
         {/* Top Header Controls with HUD branding */}
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-3 sm:mb-4 flex-shrink-0">
@@ -413,7 +479,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
         </header>
 
         {/* Global HUD Stats Ribbon */}
-        <div className="mb-3 sm:mb-4 border border-white/5 bg-[#080D18]/45 p-2 sm:p-3 flex flex-wrap gap-y-1.5 sm:gap-y-2 gap-x-4 sm:gap-x-6 items-center justify-between text-[8px] sm:text-[10.5px] tracking-wider text-white/40 relative overflow-hidden flex-shrink-0">
+        <div className="mb-3 sm:mb-4 border border-white/5 bg-[#080D18]/45 p-2 sm:p-3 flex flex-wrap gap-y-1.5 sm:gap-y-2 gap-x-4 sm:gap-x-6 items-center justify-between text-[8px] sm:text-[12px] sm:text-[10.5px] tracking-wider text-white/40 relative overflow-clip flex-shrink-0">
           <div className="absolute top-0 left-0 w-1.5 h-full bg-[#FF4500]/60"></div>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="w-1.5 h-1.5 bg-[#00F0FF] rounded-full animate-ping"></div>
@@ -431,18 +497,19 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
         </div>
 
         {/* Dynamic Multi-Layer Dashboard Body */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch min-h-0 relative">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch lg:min-h-0 relative pb-10 lg:pb-0">
           
           {/* Mobile Category select tabs (horizontal slide) */}
-          <div className="lg:hidden w-full flex overflow-x-auto gap-1.5 pb-2 pt-0.5 mb-1 flex-shrink-0 snap-x hidden-scrollbar scroll-smooth">
-            {categories.map((cat, idx) => {
+          <div className="lg:hidden w-full relative mb-1 flex-shrink-0">
+            {/* Scroll/Swipe horizontal hint gradient */}
+            <div className="absolute right-0 top-0 bottom-2 w-8 bg-gradient-to-l from-[#03070D] to-transparent pointer-events-none z-10"></div>
+            <div className="w-full flex overflow-x-auto gap-1.5 pb-2 pt-0.5 snap-x hidden-scrollbar scroll-smooth pl-1 pr-6">
+              {categories.map((cat, idx) => {
               const isActive = activeTab === cat.id;
               const mobileLabels: Record<string, string> = {
                 prompts: "CINEMA 8K",
                 models: "I.A. MODELS",
-                creations: "CRIAR 3D",
-                automations: "AUTO COFRE",
-                productivity: "HACKS",
+                
               };
               return (
                 <button
@@ -451,7 +518,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                     setActiveTab(cat.id as any);
                     setSearchQuery('');
                   }}
-                  className={`snap-center shrink-0 flex items-center gap-1.5 px-3 py-2 border rounded-[2px] font-mono text-[10px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 ${
+                  className={`snap-center shrink-0 flex items-center gap-2 px-4 py-3 border rounded-[2px] font-mono text-[11.5px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 ${
                     isActive
                       ? "border-[#FF4500] bg-[#FF4500]/10 text-white shadow-[0_0_10px_rgba(255,69,0,0.15)]"
                       : "border-white/5 bg-black/40 text-white/50 hover:text-white"
@@ -464,10 +531,11 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                 </button>
               );
             })}
+            </div>
           </div>
 
           {/* Left Sidebar Layout Navigation (Desktop Only) */}
-          <div className="hidden lg:flex lg:col-span-3 flex-col min-h-0 h-full border border-white/10 bg-[#0B1221]/90 backdrop-blur-md p-4 relative shadow-2xl overflow-hidden justify-between">
+          <div className="hidden lg:flex lg:col-span-3 flex-col min-h-0 h-full border border-white/10 bg-[#0B1221]/90  p-4 relative shadow-2xl overflow-clip justify-between">
               <div className="flex flex-col min-h-0">
                 {/* HUD Internal Console Title */}
                 <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2.5 flex-shrink-0">
@@ -486,7 +554,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                 </p>
 
                 {/* Vertical Category Side Selectors */}
-                <div className="flex flex-col gap-2 overflow-y-auto custom-scroll pr-1 flex-1">
+                <div className="flex flex-col gap-2 overflow-visible lg:overflow-y-auto custom-scroll pr-1 flex-1">
                     {categories.map((cat, idx) => {
                       const isActive = activeTab === cat.id;
                       return (
@@ -496,7 +564,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                             setActiveTab(cat.id as any);
                             setSearchQuery('');
                           }}
-                          className={`cursor-target group relative w-full text-left p-2.5 border transition-all duration-200 flex items-center gap-2 rounded-[2px] active:scale-95`}
+                          className={`cursor-target group relative w-full text-left p-3.5 border transition-all duration-200 flex items-center gap-3 rounded-[2px] active:scale-95`}
                           style={{
                             borderColor: isActive ? '#FF4500' : 'rgba(255,255,255,0.05)',
                             backgroundColor: isActive ? 'rgba(255,69,0,0.08)' : 'rgba(0,0,0,0.3)',
@@ -510,10 +578,10 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                             {cat.icon}
                           </div>
                           <div className="flex flex-col min-w-0">
-                            <span className="text-[10px] font-bold tracking-wider uppercase leading-none mb-1">
+                            <span className="text-[13px] font-bold tracking-wider uppercase leading-none mb-1">
                               {cat.label}
                             </span>
-                            <span className="text-[7.5px] tracking-wide text-white/30 group-hover:text-white/50 transition-colors uppercase truncate select-none">
+                            <span className="text-[9px] tracking-wide text-white/40 group-hover:text-white/50 transition-colors uppercase truncate select-none">
                               {cat.desc}
                             </span>
                           </div>
@@ -539,33 +607,30 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
           <div className="col-span-1 lg:col-span-9 flex flex-col min-h-0 h-full gap-3">
              
              {/* Search HUD bar */}
-             <div className="border border-white/10 bg-[#0B1221]/80 backdrop-blur-md p-3 flex flex-col sm:flex-row gap-3 items-center justify-between flex-shrink-0 rounded-[1px]">
+             <div className="border border-white/10 bg-[#0B1221]/80  p-3 flex flex-col sm:flex-row gap-3 items-center justify-between flex-shrink-0 rounded-[1px]">
                 <div className="relative w-full sm:max-w-md">
-                   <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
                    <input 
                      type="text" 
                      placeholder={`Pesquisar na guia ${categories.find(c=>c.id===activeTab)?.label}...`}
                      value={searchQuery}
                      onChange={(e) => setSearchQuery(e.target.value)}
-                     className="w-full pl-8 pr-8 py-2 bg-black/60 border border-white/5 rounded-[1px] font-mono text-[11px] text-white placeholder-white/35 focus:outline-none focus:border-[#FF4500] focus:shadow-[0_0_8px_rgba(255,69,0,0.15)] transition-all uppercase"
+                     className="w-full pl-9 pr-9 py-2.5 bg-black/60 border border-white/5 rounded-[1px] font-mono text-[12.5px] text-white placeholder-white/35 focus:outline-none focus:border-[#FF4500] focus:shadow-[0_0_8px_rgba(255,69,0,0.15)] transition-all uppercase"
                    />
                    {searchQuery && (
                      <button 
                        onClick={() => setSearchQuery('')}
                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white"
                      >
-                       <X size={10} />
+                       <X size={12} />
                      </button>
                    )}
                 </div>
 
                 <div className="text-[9.5px] text-white/30 uppercase tracking-widest text-right flex-shrink-0 font-medium">
                    Análise: <span className="text-[#FF4500] font-bold">
-                    {activeTab === 'prompts' && filteredPrompts.length}
+                    {activeTab === 'prompts' && allPromptsList.length}
                     {activeTab === 'models' && filteredModels.length}
-                    {activeTab === 'creations' && filteredCreations.length}
-                    {activeTab === 'automations' && filteredAutomations.length}
-                    {activeTab === 'productivity' && filteredProductivity.length}
                    </span> itens disponíveis
                 </div>
              </div>
@@ -585,32 +650,28 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                           className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-full min-h-0"
                         >
                           {/* Inner List (Left side of split grid, taking 4 spans) */}
-                          <div className={`col-span-1 lg:col-span-4 flex-col border border-white/5 bg-[#0B1221]/50 p-2.5 rounded-[1px] h-full min-h-0 overflow-hidden ${mobileViewMode === 'detail' ? 'hidden lg:flex' : 'flex mobile-slide-list'}`}>
+                          <div className={`col-span-1 lg:col-span-4 flex-col border border-white/5 bg-[#0B1221]/50 p-2.5 rounded-[1px] h-auto lg:h-full lg:min-h-0 ${mobileViewMode === 'detail' ? 'hidden lg:flex' : 'flex mobile-slide-list'}`}>
                             <div className="text-[8.5px] text-white/40 tracking-widest uppercase mb-2 select-none border-b border-white/5 pb-1 flex justify-between flex-shrink-0">
-                              <span>SELECIONE O MODELO</span>
-                              <span className="text-orange-500 font-bold">[{filteredPrompts.length}]</span>
+                              <span>1. SELECIONE UM WORKFLOW</span>
+                              <span className="text-orange-500 font-bold">[{allPromptsList.length}]</span>
                             </div>
-                            <div className="flex-grow flex flex-col gap-1.5 overflow-y-auto custom-scroll pr-1">
-                              {filteredPrompts.length === 0 ? (
+                            <div className="flex-1 flex flex-col gap-1.5 overflow-visible lg:overflow-y-auto custom-scroll pr-1">
+                              {allPromptsList.length === 0 ? (
                                 <div className="text-center py-6 text-white/20 text-xs">Nenhum prompt encontrado</div>
                               ) : (
-                                filteredPrompts.map((item) => {
+                                allPromptsList.map((item) => {
                                   const isSelected = selectedPromptId === item.id;
                                   return (
                                     <button
                                       key={item.id}
-                                      onClick={() => {
-                                        setSelectedPromptId(item.id);
-                                        setMobileViewMode('detail');
-                                      }}
-                                      className={`text-left p-2 border transition-all duration-150 flex flex-col rounded-[2px] active:scale-98 select-target ${
+                                      onClick={() => { setSelectedPromptId(item.id); setMobileViewMode('detail'); document.querySelector('.terminal-modal')?.scrollTo({top: 0, behavior: 'smooth'}); }}
+                                      className={`text-left p-4 sm:p-3 border transition-all duration-150 flex flex-col rounded-[2px] active:scale-98 select-target ${
                                         isSelected 
                                           ? "border-[#FF4500] bg-[#FF4500]/10 text-white" 
                                           : "border-white/5 bg-black/35 text-white/50 hover:text-white"
                                       }`}
                                     >
-                                      <span className="text-[10px] font-black tracking-wide uppercase truncate block leading-tight">{item.title}</span>
-                                      <span className="text-[8px] text-white/35 uppercase mt-0.5 tracking-wider truncate">{item.idealModel}</span>
+                                      <div className="flex justify-between items-center w-full"><div className="flex flex-col overflow-clip"><span className="text-[14px] font-black tracking-wide uppercase truncate block leading-tight">{item.title}</span><span className="text-[11px] text-white/50 uppercase mt-1.5 tracking-wider truncate">{item.idealModel}</span></div><ChevronRight size={16} className="text-white/20 flex-shrink-0" /></div>
                                     </button>
                                   );
                                 })
@@ -619,18 +680,558 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                           </div>
 
                           {/* Inner Detail Card (Right side of split grid, taking 8 spans) */}
-                          <div className={`col-span-1 lg:col-span-8 border border-white/10 bg-[#0B1221]/90 p-4 rounded-[1px] h-full flex-col min-h-0 justify-between ${mobileViewMode === 'list' ? 'hidden lg:flex' : 'flex mobile-slide-detail'}`}>
+                          <div className={`col-span-1 lg:col-span-8 border border-white/10 bg-[#0B1221]/90 p-4 rounded-[1px] h-auto lg:h-full lg:min-h-0 overflow-visible flex-col justify-start lg:justify-between ${mobileViewMode === 'list' ? 'hidden lg:flex' : 'flex mobile-slide-detail'}`}>
                             {(() => {
-                              const item = filteredPrompts.find(p => p.id === selectedPromptId) || filteredPrompts[0] || ecosystemData.prompts[0];
+                              const item = allPromptsList.find(p => p.id === selectedPromptId) || allPromptsList[0] || ecosystemData.prompts[0];
                               if (!item) return <div className="text-center py-6 text-white/20 text-xs">Selecione um prompt analítico.</div>;
                               const isCopied = copiedId === item.id;
                               const isTutorialActive = activePromptTutorialId === item.id;
+                              if (item.id === 'workflow-3d') {
+                                return (
+                                  <div className="flex-1 flex flex-col justify-between gap-4 min-h-0">
+                                    <div className="flex flex-col gap-3 min-h-0 overflow-visible lg:overflow-y-auto custom-scroll flex-1 lg:pr-1 lg:pb-1">
+                                      <button 
+                                        className="lg:hidden text-[#FF4500] hover:text-white flex items-center justify-center gap-2 font-mono text-[12px] uppercase font-bold w-full bg-[#FF4500]/10 px-4 py-3 rounded-[2px] border border-[#FF4500]/30 active:scale-95 transition-all mb-4"
+                                        onClick={() => { setMobileViewMode('list'); document.querySelector('.terminal-modal')?.scrollTo({top: 0, behavior: 'instant'}); }}
+                                      >
+                                        <ArrowLeft size={12} />
+                                        <span>Voltar para Lista</span>
+                                      </button>
+
+                                      {/* Header */}
+                                      <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                                         <span className="text-[10px] uppercase tracking-widest font-black text-[#FF4500] border border-[#FF4500]/25 px-1.5 py-0.5 bg-[#FF4500]/5 rounded-[1px]">
+                                            REQUISITO: GEMINI 3.1 PRO (AI STUDIO)
+                                         </span>
+                                         {item.tags.map(t => (
+                                           <span key={t} className="text-[10px] uppercase tracking-wider text-white/40 bg-white/5 px-1.5 py-0.5 rounded-[1px]">
+                                              {t}
+                                           </span>
+                                         ))}
+                                      </div>
+
+                                      {/* The Main Expandable Card */}
+                                      <div className="border border-[#FF4500]/25 rounded-[2px] bg-[#0A0A0A] overflow-clip shadow-[0_0_25px_rgba(255,69,0,0.08)]">
+                                        {/* Card Header clickable to toggle expand */}
+                                        <div 
+                                          onClick={() => setIsWorkflowExpanded(!isWorkflowExpanded)}
+                                          className="flex items-center justify-between p-4 bg-black/40 border-b border-[#FF4500]/10 cursor-pointer hover:bg-black/60 transition-all select-none"
+                                        >
+                                          <div className="flex items-center gap-2.5">
+                                            <div className="w-2 h-2 rounded-full bg-[#FF4500] animate-pulse"></div>
+                                            <span className="font-mono text-[11px] sm:text-[12.5px] font-black tracking-widest text-[#FF4500] uppercase">
+                                              {item.title}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[7.5px] font-mono tracking-wider text-white/30 uppercase hidden sm:inline">
+                                              {isWorkflowExpanded ? '[ CLIQUE PARA RECOLHER ]' : '[ CLIQUE PARA EXPANDIR ]'}
+                                            </span>
+                                            {isWorkflowExpanded ? <ChevronDown size={14} className="text-[#FF4500]" /> : <ChevronRight size={14} className="text-[#FF4500]" />}
+                                          </div>
+                                        </div>
+
+                                        {/* Animated Content */}
+                                        <AnimatePresence initial={false}>
+                                          {isWorkflowExpanded && (
+                                            <motion.div
+                                              initial={{ height: 0, opacity: 0 }}
+                                              animate={{ height: "auto", opacity: 1 }}
+                                              exit={{ height: 0, opacity: 0 }}
+                                              transition={{ duration: 0.25, ease: "easeInOut" }}
+                                              className="overflow-clip bg-[#0A0A0A]"
+                                            >
+                                              <div className="p-4 space-y-6 text-left border-t border-white/5 font-mono">
+                                                
+                                                {/* 1. BRIEFING DA MISSÃO */}
+                                                <section className="space-y-2 border-l-2 border-[#FF4500]/60 pl-3">
+                                                  <h4 className="text-[12.5px] font-black tracking-widest text-white uppercase mb-2">
+                                                    1. BRIEFING DA MISSÃO
+                                                  </h4>
+                                                  <div className="space-y-1 text-[11.5px] sm:text-[12px] leading-relaxed text-white/80 uppercase">
+                                                    <p><strong className="text-[#FF4500]">SISTEMA:</strong> CLONAGEM E REESTRUTURAÇÃO DE INTERFACES 3D DE ALTA FIDELIDADE EM SEGUNDOS.</p>
+                                                    <p><strong className="text-[#FF4500]">OBJETIVO:</strong> TRANSFORMAR UM CÓDIGO BASE (REACT + THREE FIBER + FRAMER MOTION) EM MÚLTIPLAS IDENTIDADES VISUAIS DE LUXO, SEM PRECISAR REESCREVER O CÓDIGO DO ZERO.</p>
+                                                  </div>
+                                                </section>
+
+                                                {/* 2. O PIPELINE OPERACIONAL */}
+                                                <section className="space-y-4 border-l-2 border-[#FF4500]/60 pl-3">
+                                                  <div>
+                                                    <h4 className="text-[12.5px] font-black tracking-widest text-white uppercase mb-2">
+                                                      2. O PIPELINE OPERACIONAL
+                                                    </h4>
+                                                    <div className="space-y-1.5 text-[11.5px] sm:text-[12px] leading-relaxed text-white/70 uppercase">
+                                                      <p><strong className="text-white">- [ PASSO 01 ] GOOGLE IDX:</strong> GERE A BASE VISUAL DO SITE (WIREFRAME E ESTRUTURA DE SCROLL).</p>
+                                                      <p><strong className="text-white">- [ PASSO 02 ] NANOBANANA 2 (FLOW):</strong> GERE AS IMAGENS/VÍDEOS DE ALTA FIDELIDADE (CINEMATIC LIGHTING, EXPLOSÕES 3D, HERO VIDEOS).</p>
+                                                      <p><strong className="text-white">- [ PASSO 03 ] CLOUDINARY:</strong> FAÇA O UPLOAD DAS MÍDIAS GERADAS E COPIE OS LINKS DIRETOS (URLs).</p>
+                                                      <p><strong className="text-white">- [ PASSO 04 ] GOOGLE AI STUDIO (GEMINI 3.1 PRO):</strong> COLE O CÓDIGO BASE GERADO NO PASSO 01, E EM SEGUIDA, INJETE UM DOS PROMPTS ABAIXO PARA APLICAR A NOVA IDENTIDADE.</p>
+                                                    </div>
+                                                  </div>
+                                                  <div className="flex flex-wrap gap-2 pt-1 border-t border-white/5">
+                                                    <a href="https://idx.dev/" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-white text-[10.5px] font-bold uppercase rounded-[1px] flex items-center px-4 py-2 gap-1.5 transition-all">
+                                                      <ExternalLink size={10} />
+                                                      Google IDX
+                                                    </a>
+                                                    <a href="https://tensor.art/" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-white text-[10.5px] font-bold uppercase rounded-[1px] flex items-center px-4 py-2 gap-1.5 transition-all">
+                                                      <ExternalLink size={10} />
+                                                      Flow (Tensor.art)
+                                                    </a>
+                                                    <a href="https://cloudinary.com/" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-white text-[10.5px] font-bold uppercase rounded-[1px] flex items-center px-4 py-2 gap-1.5 transition-all">
+                                                      <ExternalLink size={10} />
+                                                      Cloudinary
+                                                    </a>
+                                                    <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-[#FF4500]/10 border border-[#FF4500]/30 hover:bg-[#FF4500]/20 hover:border-[#FF4500]/50 text-[#FF4500] text-[10.5px] font-bold uppercase rounded-[1px] flex items-center px-4 py-2 gap-1.5 transition-all">
+                                                      <ExternalLink size={10} />
+                                                      Google AI Studio
+                                                    </a>
+                                                  </div>
+                                                </section>
+
+                                                {/* 3. PAYLOAD: PROMPTS DE INJEÇÃO [ COPIAR & COLAR ] */}
+                                                <section className="space-y-5">
+                                                  <h4 className="text-[11px] font-black tracking-widest text-[#FF4500] uppercase border-b border-white/5 pb-1">
+                                                    3. PAYLOAD: PROMPTS DE INJEÇÃO [ COPIAR & COLAR ]
+                                                  </h4>
+
+                                                  {/* PACK 01 */}
+                                                  <div className="space-y-2">
+                                                    <div className="text-[10px] font-black tracking-wider text-white uppercase flex items-center justify-between">
+                                                      <span>[ PACK 01: RICHTECH - SERVIÇOS GSM ]</span>
+                                                    </div>
+                                                    <div className="relative group">
+                                                      <button
+                                                        onClick={() => {
+                                                          const promptText = `Using the current RichTech code I already generated, completely restructure the visual identity to match exactly the brand screenshot I will describe:\n- Logo: Blue circuit-style "R" + "RICHTECH" in bright blue (#00D4FF)\n- Background style: Dark navy to cyan gradient (like the poster)\n- Services to show: Samsung Remocao de conta, Google, Samsung Mdm, Samsung Frp by Imei, Tecno/Itel/Infinix Mdm, Activações de Tools, Renovações de Tool, Remoções de Mi-Account, Remoções de Honnor-ID, Instalações de Sistemas, Bypass de IPhones/Macbooks\n- Contact: +258 84 298 8759\n- Location: Zimpeto Parque\nMake the page modern, objective, clean and conversion-focused. Keep the scrollytelling structure with 3D laptop explosion but change all colors, fonts and text to match the brand identity. Strong WhatsApp CTA. Portuguese Mozambique tone (young and direct). Keep React + Three Fiber + Framer Motion.\nRewrite the full code with the new visual identity.`;
+                                                          handleCopy(promptText, 'pack-01');
+                                                        }}
+                                                        className="absolute top-2 right-2 z-10 px-3 py-1.5 bg-black/95 border border-white/10 hover:border-[#FF4500] hover:text-[#FF4500] text-[10px] sm:text-[10.5px] font-mono font-bold text-white uppercase tracking-wider rounded-[1px] transition-all px-3 py-1.5"
+                                                      >
+                                                        {copiedId === 'pack-01' ? "[ COPIADO✓ ]" : "[ COPIAR PROMPT ]"}
+                                                      </button>
+                                                      <pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-[#00F0FF] overflow-x-auto overflow-y-auto max-h-64 select-text">
+                                                        <code>
+{`Using the current RichTech code I already generated, completely restructure the visual identity to match exactly the brand screenshot I will describe:
+- Logo: Blue circuit-style "R" + "RICHTECH" in bright blue (#00D4FF)
+- Background style: Dark navy to cyan gradient (like the poster)
+- Services to show: Samsung Remocao de conta, Google, Samsung Mdm, Samsung Frp by Imei, Tecno/Itel/Infinix Mdm, Activações de Tools, Renovações de Tool, Remoções de Mi-Account, Remoções de Honnor-ID, Instalações de Sistemas, Bypass de IPhones/Macbooks
+- Contact: +258 84 298 8759
+- Location: Zimpeto Parque
+Make the page modern, objective, clean and conversion-focused. Keep the scrollytelling structure with 3D laptop explosion but change all colors, fonts and text to match the brand identity. Strong WhatsApp CTA. Portuguese Mozambique tone (young and direct). Keep React + Three Fiber + Framer Motion.
+Rewrite the full code with the new visual identity.`}
+                                                        </code>
+                                                      </pre>
+                                                    </div>
+                                                  </div>
+
+                                                  {/* PACK 02 */}
+                                                  <div className="space-y-2">
+                                                    <div className="text-[10px] font-black tracking-wider text-white uppercase flex items-center justify-between">
+                                                      <span>[ PACK 02: DEL GARDEN SERVICES (TDG) - MULTISERVIÇOS ]</span>
+                                                    </div>
+                                                    <div className="relative group">
+                                                      <button
+                                                        onClick={() => {
+                                                          const promptText = `Using the current code I generated, restructure the entire visual identity to match exactly the Del Garden Services poster:\n- Logo: TDG (orange "T" + green "DG" with plant icon)\n- Main colors: Orange #FF8C00 + Green #00C853 + black/white\n- Services to highlight: Carpintaria, Serralharia, Estufaria, Construção, Jardinagem\n- Contact: 8790768008\n- Location: Bairro de Muhalaze\n- Slogan style: "Oferecemos soluções completas para o seu lar ou negócio"\nMake the page modern, objective and conversion-focused. Keep scrollytelling with 3D tool explosion (hammer, saw, plant etc. in sandwich style). Strong WhatsApp CTA button. Portuguese Mozambique tone. Clean and professional layout.\nRewrite the full code with the exact new visual identity from the poster.`;
+                                                          handleCopy(promptText, 'pack-02');
+                                                        }}
+                                                        className="absolute top-2 right-2 z-10 px-3 py-1.5 bg-black/95 border border-white/10 hover:border-[#FF4500] hover:text-[#FF4500] text-[10px] sm:text-[10.5px] font-mono font-bold text-white uppercase tracking-wider rounded-[1px] transition-all px-3 py-1.5"
+                                                      >
+                                                        {copiedId === 'pack-02' ? "[ COPIADO✓ ]" : "[ COPIAR PROMPT ]"}
+                                                      </button>
+                                                      <pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-orange-500 overflow-x-auto overflow-y-auto max-h-64 select-text">
+                                                        <code>
+{`Using the current code I generated, restructure the entire visual identity to match exactly the Del Garden Services poster:
+- Logo: TDG (orange "T" + green "DG" with plant icon)
+- Main colors: Orange #FF8C00 + Green #00C853 + black/white
+- Services to highlight: Carpintaria, Serralharia, Estufaria, Construção, Jardinagem
+- Contact: 8790768008
+- Location: Bairro de Muhalaze
+- Slogan style: "Oferecemos soluções completas para o seu lar ou negócio"
+Make the page modern, objective and conversion-focused. Keep scrollytelling with 3D tool explosion (hammer, saw, plant etc. in sandwich style). Strong WhatsApp CTA button. Portuguese Mozambique tone. Clean and professional layout.
+Rewrite the full code with the exact new visual identity from the poster.`}
+                                                        </code>
+                                                      </pre>
+                                                    </div>
+                                                  </div>
+
+                                                  {/* PACK 03 */}
+                                                  <div className="space-y-2">
+                                                    <div className="text-[10px] font-black tracking-wider text-white uppercase flex items-center justify-between">
+                                                      <span>[ PACK 03: YOU TECH 4 SERVICE - ASSISTÊNCIA TÉCNICA ]</span>
+                                                    </div>
+                                                    <div className="relative group">
+                                                      <button
+                                                        onClick={() => {
+                                                          const promptText = `Using the current code, restructure the visual identity to match exactly the "4YOU TECH & SERVICE" poster:\n- Logo: Circular "YOU TECH 4 SERVICE" in cyan/blue\n- Main title style: "4YOU TECH & SERVICE" in bright cyan\n- Services: Atualização de Software, Desbloqueio de Rede, Android/Apple (incluir logos), etc.\n- Colors: Dark purple/blue background + bright cyan and orange accents\n- Keep technical and modern feel\nMake the page clean, modern and highly conversion-focused. Keep scrollytelling 3D explosion (technical box with chips and tools). Strong WhatsApp CTA. Portuguese Mozambique tone.\nRewrite the full code with the exact new visual identity.`;
+                                                          handleCopy(promptText, 'pack-03');
+                                                        }}
+                                                        className="absolute top-2 right-2 z-10 px-3 py-1.5 bg-black/95 border border-white/10 hover:border-[#FF4500] hover:text-[#FF4500] text-[10px] sm:text-[10.5px] font-mono font-bold text-white uppercase tracking-wider rounded-[1px] transition-all px-3 py-1.5"
+                                                      >
+                                                        {copiedId === 'pack-03' ? "[ COPIADO✓ ]" : "[ COPIAR PROMPT ]"}
+                                                      </button>
+                                                      <pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-cyan-400 overflow-x-auto overflow-y-auto max-h-64 select-text">
+                                                        <code>
+{`Using the current code, restructure the visual identity to match exactly the "4YOU TECH & SERVICE" poster:
+- Logo: Circular "YOU TECH 4 SERVICE" in cyan/blue
+- Main title style: "4YOU TECH & SERVICE" in bright cyan
+- Services: Atualização de Software, Desbloqueio de Rede, Android/Apple (incluir logos), etc.
+- Colors: Dark purple/blue background + bright cyan and orange accents
+- Keep technical and modern feel
+Make the page clean, modern and highly conversion-focused. Keep scrollytelling 3D explosion (technical box with chips and tools). Strong WhatsApp CTA. Portuguese Mozambique tone.
+Rewrite the full code with the exact new visual identity.`}
+                                                        </code>
+                                                      </pre>
+                                                    </div>
+                                                  </div>
+
+                                                  {/* PACK 04 */}
+                                                  <div className="space-y-2">
+                                                    <div className="text-[10px] font-black tracking-wider text-white uppercase flex items-center justify-between">
+                                                      <span>[ PACK 04: MILLIONAIRE MOVE - IMPORTAÇÃO & LOGÍSTICA DE LUXO ]</span>
+                                                    </div>
+                                                    <div className="relative group">
+                                                      <button
+                                                        onClick={() => {
+                                                          const promptText = `Using the current code, completely change the visual identity to match the Millionaire Move logo and style:\n- Logo: "MILLIONAIRE MOVE" in bold golden 3D style\n- Tagline: "Moving towards success"\n- Main colors: Black background + rich gold #FACC15 and orange accents\n- Visual: Globe with Chinese flag, airplane, shipping container, golden glow\nMake the page ultra-luxury, modern and conversion-focused. Keep scrollytelling with 3D explosion of logistics items (box, hair, clothes, phone, etc.). Strong WhatsApp VIP CTA. Portuguese Mozambique tone.\nRewrite the full code with the exact new visual identity.`;
+                                                          handleCopy(promptText, 'pack-04');
+                                                        }}
+                                                        className="absolute top-2 right-2 z-10 px-3 py-1.5 bg-black/95 border border-white/10 hover:border-[#FF4500] hover:text-[#FF4500] text-[10px] sm:text-[10.5px] font-mono font-bold text-white uppercase tracking-wider rounded-[1px] transition-all px-3 py-1.5"
+                                                      >
+                                                        {copiedId === 'pack-04' ? "[ COPIADO✓ ]" : "[ COPIAR PROMPT ]"}
+                                                      </button>
+                                                      <pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-yellow-400 overflow-x-auto overflow-y-auto max-h-64 select-text">
+                                                        <code>
+{`Using the current code, completely change the visual identity to match the Millionaire Move logo and style:
+- Logo: "MILLIONAIRE MOVE" in bold golden 3D style
+- Tagline: "Moving towards success"
+- Main colors: Black background + rich gold #FACC15 and orange accents
+- Visual: Globe with Chinese flag, airplane, shipping container, golden glow
+Make the page ultra-luxury, modern and conversion-focused. Keep scrollytelling with 3D explosion of logistics items (box, hair, clothes, phone, etc.). Strong WhatsApp VIP CTA. Portuguese Mozambique tone.
+Rewrite the full code with the exact new visual identity.`}
+                                                        </code>
+                                                      </pre>
+                                                    </div>
+                                                  </div>
+
+                                                  {/* PACK 05 */}
+                                                  <div className="space-y-2">
+                                                    <div className="text-[10px] font-black tracking-wider text-white uppercase flex items-center justify-between">
+                                                      <span>[ PACK 05: MALATE GLOBAL IMPORTS (MGI) - IMPORTAÇÃO DIRETA ]</span>
+                                                    </div>
+                                                    <div className="relative group">
+                                                      <button
+                                                        onClick={() => {
+                                                          const promptText = `Using the current code, restructure the visual identity to match exactly the MGI / Malate poster:\n- Logo: MGI with airplane and "IMPORTAÇÕES"\n- Main message: "ESTAMOS ABERTOS" in big orange box + "9H30 HÁ 18H"\n- Slogan: "SOMOS A PONTE PARA O OUTRO MUNDO"\n- Contact: 83 4030 346\n- Location: Av Olof Palm, n310\nMake the page modern, objective and conversion-focused. Keep scrollytelling with 3D drone/import items explosion. Strong WhatsApp CTA. Portuguese Mozambique tone.\nRewrite the full code with the exact new visual identity from the poster.`;
+                                                          handleCopy(promptText, 'pack-05');
+                                                        }}
+                                                        className="absolute top-2 right-2 z-10 px-3 py-1.5 bg-black/95 border border-white/10 hover:border-[#FF4500] hover:text-[#FF4500] text-[10px] sm:text-[10.5px] font-mono font-bold text-white uppercase tracking-wider rounded-[1px] transition-all px-3 py-1.5"
+                                                      >
+                                                        {copiedId === 'pack-05' ? "[ COPIADO✓ ]" : "[ COPIAR PROMPT ]"}
+                                                      </button>
+                                                      <pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-orange-400 overflow-x-auto overflow-y-auto max-h-64 select-text">
+                                                        <code>
+{`Using the current code, restructure the visual identity to match exactly the MGI / Malate poster:
+- Logo: MGI with airplane and "IMPORTAÇÕES"
+- Main message: "ESTAMOS ABERTOS" in big orange box + "9H30 HÁ 18H"
+- Slogan: "SOMOS A PONTE PARA O OUTRO MUNDO"
+- Contact: 83 4030 346
+- Location: Av Olof Palm, n310
+Make the page modern, objective and conversion-focused. Keep scrollytelling with 3D drone/import items explosion. Strong WhatsApp CTA. Portuguese Mozambique tone.
+Rewrite the full code with the exact new visual identity from the poster.`}
+                                                        </code>
+                                                      </pre>
+                                                    </div>
+                                                  </div>
+                                                </section>
+
+                                              </div>
+                                            </motion.div>
+                                          )}
+                                        </AnimatePresence>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              } else if (item.id === 'workflow-vfx') {
+                                return (
+                                  <div className="flex-1 flex flex-col justify-between gap-4 min-h-0">
+                                    <div className="flex flex-col gap-3 min-h-0 overflow-visible lg:overflow-y-auto custom-scroll flex-1 lg:pr-1 lg:pb-1">
+                                      <button 
+                                        className="lg:hidden text-[#FF4500] hover:text-white flex items-center justify-center gap-2 font-mono text-[12px] uppercase font-bold w-full bg-[#FF4500]/10 px-4 py-3 rounded-[2px] border border-[#FF4500]/30 active:scale-95 transition-all mb-4"
+                                        onClick={() => { setMobileViewMode('list'); document.querySelector('.terminal-modal')?.scrollTo({top: 0, behavior: 'instant'}); }}
+                                      >
+                                        <ArrowLeft size={12} />
+                                        <span>Voltar para Lista</span>
+                                      </button>
+
+                                      {/* Header */}
+                                      <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                                         <span className="text-[10px] uppercase tracking-widest font-black text-[#FF4500] border border-[#FF4500]/25 px-1.5 py-0.5 bg-[#FF4500]/5 rounded-[1px]">
+                                            REQUISITO: NANOBANANA 2 (FLOW)
+                                         </span>
+                                         {item.tags.map(t => (
+                                           <span key={t} className="text-[10px] uppercase tracking-wider text-white/40 bg-white/5 px-1.5 py-0.5 rounded-[1px]">
+                                              {t}
+                                           </span>
+                                         ))}
+                                      </div>
+
+                                      {/* The Main Expandable Card */}
+                                      <div className="border border-cyan-400/25 rounded-[2px] bg-[#0A0A0A] overflow-clip shadow-[0_0_25px_rgba(0,240,255,0.08)]">
+                                        {/* Card Header clickable to toggle expand */}
+                                        <div 
+                                          onClick={() => setIsWorkflowExpanded(!isWorkflowExpanded)}
+                                          className="flex items-center justify-between p-4 bg-black/40 border-b border-cyan-400/10 cursor-pointer hover:bg-black/60 transition-all select-none"
+                                        >
+                                          <div className="flex items-center gap-2.5">
+                                            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></div>
+                                            <span className="font-mono text-[11px] sm:text-[12.5px] font-black tracking-widest text-cyan-400 uppercase">
+                                              {item.title}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[7.5px] font-mono tracking-wider text-white/30 uppercase hidden sm:inline">
+                                              {isWorkflowExpanded ? '[ CLIQUE PARA RECOLHER ]' : '[ CLIQUE PARA EXPANDIR ]'}
+                                            </span>
+                                            {isWorkflowExpanded ? <ChevronDown size={14} className="text-cyan-400" /> : <ChevronRight size={14} className="text-cyan-400" />}
+                                          </div>
+                                        </div>
+
+                                        {/* Animated Content */}
+                                        <AnimatePresence initial={false}>
+                                          {isWorkflowExpanded && (
+                                            <motion.div
+                                              initial={{ height: 0, opacity: 0 }}
+                                              animate={{ height: "auto", opacity: 1 }}
+                                              exit={{ height: 0, opacity: 0 }}
+                                              transition={{ duration: 0.25, ease: "easeInOut" }}
+                                              className="overflow-clip bg-[#0A0A0A]"
+                                            >
+                                              <div className="p-4 space-y-6 text-left border-t border-white/5 font-mono">
+                                                
+                                                {/* 1. GUIA RÁPIDO */}
+                                                <section className="space-y-4 border-l-2 border-cyan-400/60 pl-3">
+                                                  <div>
+                                                    <h4 className="text-[12.5px] font-black tracking-widest text-white uppercase mb-2">
+                                                      1. GUIA RÁPIDO DE EXECUÇÃO (PASSO A PASSO)
+                                                    </h4>
+                                                    <div className="space-y-1.5 text-[11.5px] sm:text-[12px] leading-relaxed text-white/70">
+                                                      <p><strong className="text-cyan-400">1. Seleção de Motor:</strong> Ative o modelo nanobanana 2.</p>
+                                                      <p><strong className="text-cyan-400">2. Proporção (Aspect Ratio):</strong> Configure a saída estritamente para 3:4 (formato retrato padrão). Se ignorado, o mapeamento do rosto pode ser achatado.</p>
+                                                      <p><strong className="text-cyan-400">3. Inserção de Links:</strong> Substitua as tags [LINK IMAGE PERSONAL] (rosto do cliente/modelo) e [LINK IMAGEM BASE] (cenário/pose desejada) por URLs limpas.</p>
+                                                      <p><strong className="text-cyan-400">4. Volume de Geração:</strong> Configure o lote para 3 gerações (3x).</p>
+                                                      <p><strong className="text-cyan-400">5. Seleção (Cherry-Picking):</strong> O sistema criará micro-variações. Salve apenas a imagem que capturou perfeitamente o formato dos olhos e as linhas de expressão da pessoa original.</p>
+                                                    </div>
+                                                  </div>
+                                                  <div className="flex flex-wrap gap-2 pt-1 border-t border-white/5">
+                                                    <a href="https://tensor.art/" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-cyan-400/10 border border-cyan-400/30 hover:bg-cyan-400/20 hover:border-cyan-400/50 text-cyan-400 text-[10.5px] font-bold uppercase rounded-[1px] flex items-center px-4 py-2 gap-1.5 transition-all">
+                                                      <ExternalLink size={10} />
+                                                      NanoBanana 2 (Tensor.art)
+                                                    </a>
+                                                    <a href="https://cloudinary.com/" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-white text-[10.5px] font-bold uppercase rounded-[1px] flex items-center px-4 py-2 gap-1.5 transition-all">
+                                                      <ExternalLink size={10} />
+                                                      Cloudinary
+                                                    </a>
+                                                  </div>
+                                                </section>
+
+                                                {/* 2. PROMPTS UNIVERSAIS */}
+                                                <section className="space-y-5">
+                                                  <h4 className="text-[12.5px] font-black tracking-widest text-cyan-400 uppercase border-b border-white/5 pb-1">
+                                                    2. PROMPTS UNIVERSAIS DE PRODUÇÃO
+                                                  </h4>
+
+                                                  {/* TEMPLATE 1 */}
+                                                  <div className="space-y-2">
+                                                    <div className="text-[10px] font-black tracking-wider text-white uppercase flex items-center justify-between">
+                                                      <span>🟢 TEMPLATE 1: Uso Geral e Correção de Escala (Anti-Bobblehead)</span>
+                                                    </div>
+                                                    <p className="text-[9px] text-white/40 uppercase">Uso: Para 90% das cenas. Força a IA a reduzir o rosto da pessoa para caber perfeitamente no corpo da imagem base.</p>
+                                                    
+                                                    <div className="relative group">
+                                                      <button
+                                                        onClick={() => {
+                                                          const promptText = `/imagine prompt: Award-winning high-fashion editorial photography, flawless VFX-grade digital composite. Transfer the EXACT SOURCE IDENTITY from [LINK IMAGE PERSONAL] onto the composition, pose, and proportions of the BASE IMAGE from [LINK IMAGEM BASE].\n\nSOURCE IDENTITY (ABSOLUTE LIKENESS LOCK): Clone the exact biometric likeness, specific skin tone, and unique facial features from the source photo. Do NOT generate a generic AI face. Preserve all natural smile lines, eye shapes, and anatomical asymmetry.\n\nCRITICAL VFX & ADAPTATION PROTOCOLS:\n1. Strict Anatomical Scaling: The new head MUST match the delicate scale of the base subject. Scale down facial features to fit flawlessly onto the neck of the base body. Do NOT enlarge the face (Anti-Bobblehead).\n2. Thermal Lighting Override: Apply the source's exact complexion, color-graded EXACTLY by the ambient lighting and temperature of the base scene. Specular highlights must reflect the environmental light physics.\n3. Dynamic Hair Replacement: Erase base hair entirely. Integrate the source identity's hair style and volume, scaled proportionally, obeying gravity and seamlessly interacting with the body pose. --ar 3:4`;
+                                                          handleCopy(promptText, 'vfx-template-1');
+                                                        }}
+                                                        className="absolute top-2 right-2 z-10 px-3 py-1.5 bg-black/95 border border-white/10 hover:border-cyan-400 hover:text-cyan-400 text-[10px] sm:text-[10.5px] font-mono font-bold text-white uppercase tracking-wider rounded-[1px] transition-all px-3 py-1.5"
+                                                      >
+                                                        {copiedId === 'vfx-template-1' ? "[ COPIADO✓ ]" : "[ COPIAR PROMPT ]"}
+                                                      </button>
+                                                      <pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-[#00F0FF] overflow-x-auto overflow-y-auto max-h-64 select-text">
+                                                        <code>
+{`/imagine prompt: Award-winning high-fashion editorial photography, flawless VFX-grade digital composite. Transfer the EXACT SOURCE IDENTITY from [LINK IMAGE PERSONAL] onto the composition, pose, and proportions of the BASE IMAGE from [LINK IMAGEM BASE].
+
+SOURCE IDENTITY (ABSOLUTE LIKENESS LOCK): Clone the exact biometric likeness, specific skin tone, and unique facial features from the source photo. Do NOT generate a generic AI face. Preserve all natural smile lines, eye shapes, and anatomical asymmetry. 
+
+CRITICAL VFX & ADAPTATION PROTOCOLS:
+1. Strict Anatomical Scaling: The new head MUST match the delicate scale of the base subject. Scale down facial features to fit flawlessly onto the neck of the base body. Do NOT enlarge the face (Anti-Bobblehead).
+2. Thermal Lighting Override: Apply the source's exact complexion, color-graded EXACTLY by the ambient lighting and temperature of the base scene. Specular highlights must reflect the environmental light physics.
+3. Dynamic Hair Replacement: Erase base hair entirely. Integrate the source identity's hair style and volume, scaled proportionally, obeying gravity and seamlessly interacting with the body pose. --ar 3:4`}
+                                                        </code>
+                                                      </pre>
+                                                    </div>
+                                                  </div>
+
+                                                  {/* TEMPLATE 2 */}
+                                                  <div className="space-y-2 mt-4">
+                                                    <div className="text-[10px] font-black tracking-wider text-white uppercase flex items-center justify-between">
+                                                      <span>🔴 TEMPLATE 2: Mestre de Oclusão (Objetos no Primeiro Plano)</span>
+                                                    </div>
+                                                    <p className="text-[9px] text-white/40 uppercase">Uso: Apenas para cenas onde o rosto base está parcialmente coberto (óculos, mãos, texturas densas, golas, flores).</p>
+
+                                                    <div className="relative group">
+                                                      <button
+                                                        onClick={() => {
+                                                          const promptText = `/imagine prompt: Award-winning high-fashion editorial photography, flawless VFX-grade digital composite. Transfer the EXACT SOURCE IDENTITY from [LINK IMAGE PERSONAL] onto the composition of the BASE IMAGE from [LINK IMAGEM BASE].\n\nSOURCE IDENTITY (ABSOLUTE LIKENESS LOCK): Clone the exact biometric likeness, specific skin tone, and unique facial features from the source photo. Do NOT generate a generic AI face. Preserve natural anatomy.\n\nCRITICAL OCCLUSION & DEPTH PROTOCOLS:\n1. Extreme Depth Preservation: The BASE IMAGE features prominent foreground objects covering or framing the face. These elements MUST remain completely untouched and in their exact position. Render the source identity's features strictly BEHIND these objects. \n2. Reflection & Shadow Lock: Maintain all reflections, micro-shadows, and lens distortions cast by the foreground objects onto the new skin.\n3. Lighting Sync: Seamlessly integrate the source complexion with the environmental lighting of the base scene. \n4. Hair Integration: Integrate the source's hair naturally into the environment, falling behind any foreground obstacles as required by the physical space. --ar 3:4`;
+                                                          handleCopy(promptText, 'vfx-template-2');
+                                                        }}
+                                                        className="absolute top-2 right-2 z-10 px-3 py-1.5 bg-black/95 border border-white/10 hover:border-cyan-400 hover:text-cyan-400 text-[10px] sm:text-[10.5px] font-mono font-bold text-white uppercase tracking-wider rounded-[1px] transition-all px-3 py-1.5"
+                                                      >
+                                                        {copiedId === 'vfx-template-2' ? "[ COPIADO✓ ]" : "[ COPIAR PROMPT ]"}
+                                                      </button>
+                                                      <pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-red-400 overflow-x-auto overflow-y-auto max-h-64 select-text">
+                                                        <code>
+{`/imagine prompt: Award-winning high-fashion editorial photography, flawless VFX-grade digital composite. Transfer the EXACT SOURCE IDENTITY from [LINK IMAGE PERSONAL] onto the composition of the BASE IMAGE from [LINK IMAGEM BASE].
+
+SOURCE IDENTITY (ABSOLUTE LIKENESS LOCK): Clone the exact biometric likeness, specific skin tone, and unique facial features from the source photo. Do NOT generate a generic AI face. Preserve natural anatomy.
+
+CRITICAL OCCLUSION & DEPTH PROTOCOLS:
+1. Extreme Depth Preservation: The BASE IMAGE features prominent foreground objects covering or framing the face. These elements MUST remain completely untouched and in their exact position. Render the source identity's features strictly BEHIND these objects. 
+2. Reflection & Shadow Lock: Maintain all reflections, micro-shadows, and lens distortions cast by the foreground objects onto the new skin.
+3. Lighting Sync: Seamlessly integrate the source complexion with the environmental lighting of the base scene. 
+4. Hair Integration: Integrate the source's hair naturally into the environment, falling behind any foreground obstacles as required by the physical space. --ar 3:4`}
+                                                        </code>
+                                                      </pre>
+                                                    </div>
+                                                  </div>
+
+                                                </section>
+                                              </div>
+                                            </motion.div>
+                                          )}
+                                        </AnimatePresence>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              } else if (item.id === 'workflow-deploy') {
+                                return (
+                                  <div className="flex-1 flex flex-col justify-between gap-4 min-h-0">
+                                    <div className="flex flex-col gap-3 min-h-0 overflow-visible lg:overflow-y-auto custom-scroll flex-1 lg:pr-1 lg:pb-1">
+                                      <button 
+                                        className="lg:hidden text-[#FF4500] hover:text-white flex items-center justify-center gap-2 font-mono text-[12px] uppercase font-bold w-full bg-[#FF4500]/10 px-4 py-3 rounded-[2px] border border-[#FF4500]/30 active:scale-95 transition-all mb-4"
+                                        onClick={() => { setMobileViewMode('list'); document.querySelector('.terminal-modal')?.scrollTo({top: 0, behavior: 'instant'}); }}
+                                      >
+                                        <ArrowLeft size={12} />
+                                        <span>Voltar para Lista</span>
+                                      </button>
+
+                                      {/* Header */}
+                                      <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                                         <span className="text-[10px] uppercase tracking-widest font-black text-purple-500 border border-purple-500/25 px-1.5 py-0.5 bg-purple-500/5 rounded-[1px]">
+                                            REQUISITO: NAVEGADOR OU PC
+                                         </span>
+                                         {item.tags.map(t => (
+                                           <span key={t} className="text-[10px] uppercase tracking-wider text-white/40 bg-white/5 px-1.5 py-0.5 rounded-[1px]">
+                                              {t}
+                                           </span>
+                                         ))}
+                                      </div>
+
+                                      {/* The Main Expandable Card */}
+                                      <div className="border border-purple-500/25 rounded-[2px] bg-[#0A0A0A] overflow-clip shadow-[0_0_25px_rgba(168,85,247,0.08)]">
+                                        <div 
+                                          onClick={() => setIsWorkflowExpanded(!isWorkflowExpanded)}
+                                          className="flex items-center justify-between p-4 bg-black/40 border-b border-purple-500/10 cursor-pointer hover:bg-black/60 transition-all select-none"
+                                        >
+                                          <div className="flex items-center gap-2.5">
+                                            <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></div>
+                                            <span className="font-mono text-[11px] sm:text-[12.5px] font-black tracking-widest text-purple-500 uppercase">
+                                              {item.title}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[7.5px] font-mono tracking-wider text-white/30 uppercase hidden sm:inline">
+                                              {isWorkflowExpanded ? '[ CLIQUE PARA RECOLHER ]' : '[ CLIQUE PARA EXPANDIR ]'}
+                                            </span>
+                                            {isWorkflowExpanded ? <ChevronDown size={14} className="text-purple-500" /> : <ChevronRight size={14} className="text-purple-500" />}
+                                          </div>
+                                        </div>
+
+                                        {/* Animated Content */}
+                                        <AnimatePresence initial={false}>
+                                          {isWorkflowExpanded && (
+                                            <motion.div
+                                              initial={{ height: 0, opacity: 0 }}
+                                              animate={{ height: "auto", opacity: 1 }}
+                                              exit={{ height: 0, opacity: 0 }}
+                                              transition={{ duration: 0.25, ease: "easeInOut" }}
+                                              className="overflow-clip bg-[#0A0A0A]"
+                                            >
+                                              <div className="p-4 space-y-6 text-left border-t border-white/5 font-mono">
+                                                
+                                                {/* LINKS ÚTEIS */}
+                                                <section className="space-y-4 border-l-2 border-purple-500/60 pl-3">
+                                                  <div>
+                                                    <h4 className="text-[12.5px] font-black tracking-widest text-white uppercase mb-2">
+                                                      LINKS OFICIAIS DAS FERRAMENTAS & MODELOS
+                                                    </h4>
+                                                    <div className="flex flex-wrap gap-2 pt-1">
+                                                      <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-[#FF4500]/10 border border-[#FF4500]/30 hover:bg-[#FF4500]/20 text-[#FF4500] text-[10.5px] font-bold uppercase rounded-[1px] flex items-center px-4 py-2 gap-1.5 transition-all">
+                                                        <ExternalLink size={10} /> Gemini (AI Studio)
+                                                      </a>
+                                                      <a href="https://claude.ai/" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-orange-400/10 border border-orange-400/30 hover:bg-orange-400/20 text-orange-400 text-[10.5px] font-bold uppercase rounded-[1px] flex items-center px-4 py-2 gap-1.5 transition-all">
+                                                        <ExternalLink size={10} /> Claude (Anthropic)
+                                                      </a>
+                                                      <a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-400/10 border border-green-400/30 hover:bg-green-400/20 text-green-400 text-[10.5px] font-bold uppercase rounded-[1px] flex items-center px-4 py-2 gap-1.5 transition-all">
+                                                        <ExternalLink size={10} /> OpenAI (ChatGPT)
+                                                      </a>
+                                                      <a href="https://github.com/" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white/10 border border-white/30 hover:bg-white/20 text-white text-[10.5px] font-bold uppercase rounded-[1px] flex items-center px-4 py-2 gap-1.5 transition-all">
+                                                        <ExternalLink size={10} /> GitHub
+                                                      </a>
+                                                      <a href="https://vercel.com/" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white/10 border border-white/30 hover:bg-white/20 text-white text-[10.5px] font-bold uppercase rounded-[1px] flex items-center px-4 py-2 gap-1.5 transition-all">
+                                                        <ExternalLink size={10} /> Vercel
+                                                      </a>
+                                                      <a href="https://idx.dev/" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 text-blue-400 text-[10.5px] font-bold uppercase rounded-[1px] flex items-center px-4 py-2 gap-1.5 transition-all">
+                                                        <ExternalLink size={10} /> Baixar Antigravity IDE (PC)
+                                                      </a>
+                                                    </div>
+                                                  </div>
+                                                </section>
+
+                                                {/* FLUXO DE PUBLICAÇÃO */}
+                                                <section className="space-y-4 border-l-2 border-purple-500/60 pl-3">
+                                                  <div>
+                                                    <h4 className="text-[12.5px] font-black tracking-widest text-purple-400 uppercase mb-2">
+                                                      O PIPELINE DE PUBLICAÇÃO (DESKTOP & CELULAR)
+                                                    </h4>
+                                                    <div className="space-y-2 text-[11.5px] sm:text-[12px] leading-relaxed text-white/70 uppercase">
+                                                      <p><strong className="text-white">1. Geração e Construção:</strong> Após montar toda interface no Google AI Studio / Antigravity, garanta que seu app construiu com sucesso.</p>
+                                                      <p><strong className="text-white">2. Sincronização e Download:</strong> Você pode exportar seu projeto conectando diretamente a uma conta do GitHub ou baixando o arquivo ZIP.</p>
+                                                      <p><strong className="text-white">3. (Opcional) Edição no Antigravity IDE:</strong> Se estiver no PC de desenvolvimento físico, descompacte o arquivo zipado ou clone de volta o github repo dentro da sua IDE Antigravity ou VS Code para manipulação fina, commits ou reínicio com outros modelos acoplados.</p>
+                                                      <p><strong className="text-white">4. Push Final:</strong> Publique as últimas alterações para um Repositório GitHub pela interface web, IDE ou terminal.</p>
+                                                      <p><strong className="text-white">5. Vercel Deploy:</strong> Em qualquer lugar (celular ou PC), conecte-se na Vercel e faça `Import GitHub Repository` do seu projeto. A Vercel auto-configura e publica seu Link com SSL. O deploy subirá imediatamente!</p>
+                                                    </div>
+                                                  </div>
+                                                </section>
+
+                                              </div>
+                                            </motion.div>
+                                          )}
+                                        </AnimatePresence>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              }
+
                               return (
                                 <div className="flex-1 flex flex-col justify-between gap-4 min-h-0">
-                                  <div className="flex flex-col gap-3 min-h-0 overflow-y-auto custom-scroll flex-1 pr-1 pb-1">
+                                  <div className="flex flex-col gap-3 min-h-0 overflow-visible lg:overflow-y-auto custom-scroll flex-1 lg:pr-1 lg:pb-1">
                                     <button 
-                                      className="lg:hidden text-[#FF4500] hover:text-white flex items-center gap-1.5 font-mono text-[10px] uppercase font-bold self-start bg-white/5 px-2 py-1.5 rounded-[1px] border border-white/5 active:scale-95 transition-all"
-                                      onClick={() => setMobileViewMode('list')}
+                                      className="lg:hidden text-[#FF4500] hover:text-white flex items-center justify-center gap-2 font-mono text-[12px] uppercase font-bold w-full bg-[#FF4500]/10 px-4 py-3 rounded-[2px] border border-[#FF4500]/30 active:scale-95 transition-all mb-4"
+                                      onClick={() => { setMobileViewMode('list'); document.querySelector('.terminal-modal')?.scrollTo({top: 0, behavior: 'instant'}); }}
                                     >
                                       <ArrowLeft size={12} />
                                       <span>Voltar para Lista</span>
@@ -641,28 +1242,28 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                                     
                                     <div>
                                       <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-                                         <span className="text-[8.5px] uppercase tracking-widest font-black text-[#FF4500] border border-[#FF4500]/25 px-1.5 py-0.5 bg-[#FF4500]/5 rounded-[1px]">
+                                         <span className="text-[10px] uppercase tracking-widest font-black text-[#FF4500] border border-[#FF4500]/25 px-1.5 py-0.5 bg-[#FF4500]/5 rounded-[1px]">
                                             MODELO IDEAL: {item.idealModel}
                                          </span>
                                          {item.tags.map(t => (
-                                           <span key={t} className="text-[8.5px] uppercase tracking-wider text-white/40 bg-white/5 px-1.5 py-0.5 rounded-[1px]">
+                                           <span key={t} className="text-[10px] uppercase tracking-wider text-white/40 bg-white/5 px-1.5 py-0.5 rounded-[1px]">
                                               {t}
                                            </span>
                                          ))}
                                       </div>
-                                      <h3 className="text-sm font-bold text-white uppercase tracking-wide leading-tight">{item.title}</h3>
-                                      <p className="text-[11.5px] text-white/50 leading-relaxed font-sans mt-1">
+                                      <h3 className="text-[16px] sm:text-sm font-bold text-white uppercase tracking-wide leading-tight">{item.title}</h3>
+                                      <p className="hidden sm:block text-[11.5px] text-white/50 leading-relaxed font-sans mt-1">
                                         {item.description}
                                       </p>
                                     </div>
 
                                     {/* Editable Prompt Box Container */}
-                                    <div className="relative bg-black/60 border border-white/5 p-2.5 rounded-[1px] font-mono text-[11px] leading-relaxed text-white/95 select-all max-h-[110px] overflow-y-auto custom-scroll break-words">
+                                    <div className="relative bg-black/60 border border-white/5 p-2.5 rounded-[1px] font-mono text-[12px] sm:text-[11px] leading-relaxed text-white/95 select-all max-h-56 sm:max-h-[110px] overflow-visible lg:overflow-y-auto custom-scroll break-words">
                                       {item.prompt}
                                     </div>
                                     
                                     {/* Action instructions how to use */}
-                                    <div className="text-[11px] text-white/40 leading-relaxed font-sans border-l border-[#FF4500]/40 pl-2">
+                                    <div className="hidden sm:block text-[11px] text-white/40 leading-relaxed font-sans border-l border-[#FF4500]/40 pl-2">
                                       <strong className="text-[#FF4500] font-mono font-black text-[9px] block uppercase">// INSTRUÇÕES PRÁTICAS:</strong>
                                       {item.howToUse}
                                     </div>
@@ -672,7 +1273,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                       <button
                                         onClick={() => handleCopy(item.prompt, item.id)}
-                                        className={`cursor-target py-2 px-3 font-mono text-[10px] font-bold uppercase tracking-widest border rounded-[2px] flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 ${
+                                        className={`cursor-target py-3 sm:py-2 px-3 font-mono text-[10px] font-bold uppercase tracking-widest border rounded-[2px] flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 ${
                                           isCopied 
                                             ? 'bg-[#FF4500] border-[#FF4500] text-white animate-pulse' 
                                             : 'bg-black/45 border-white/10 hover:border-[#FF4500]/50 hover:bg-[#FF4500]/5 text-white/80 hover:text-white'
@@ -684,7 +1285,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
 
                                       <button
                                         onClick={() => triggerPromptTutorial(item.id)}
-                                        className={`cursor-target py-2 px-3 font-mono text-[10px] font-bold uppercase tracking-widest border rounded-[2px] flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 ${
+                                        className={`cursor-target py-3 sm:py-2 px-3 font-mono text-[10px] font-bold uppercase tracking-widest border rounded-[2px] flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 ${
                                           isTutorialActive
                                             ? 'bg-[#00F0FF]/20 border-[#00F0FF] text-white'
                                             : 'bg-black/45 border-white/10 hover:border-[#00F0FF]/50 hover:bg-[#00F0FF]/5 text-cyan-400'
@@ -702,7 +1303,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                                           initial={{ opacity: 0, height: 0 }}
                                           animate={{ opacity: 1, height: 'auto' }}
                                           exit={{ opacity: 0, height: 0 }}
-                                          className="overflow-hidden border border-[#00F0FF]/30 bg-black/85 rounded-[1px] p-2.5 mt-1 text-[10px]"
+                                          className="overflow-clip border border-[#00F0FF]/30 bg-black/85 rounded-[1px] p-2.5 mt-1 text-[10px]"
                                         >
                                           <div className="flex justify-between items-center text-[7px] font-mono tracking-widest text-[#00F0FF] mb-1.5 border-b border-white/5 pb-1 select-none">
                                             <span>MOCKUP CONSOLE // IA RESPONDENDO PROMPT</span>
@@ -714,7 +1315,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                                           {tutorialIsRunning ? (
                                             <div className="py-2.5 flex flex-col items-center justify-center space-y-1.5 select-none">
                                               <span className="text-[8.5px] text-[#00F0FF] animate-pulse">PROCESSANDO COMANDO CIBERNÉTICO...</span>
-                                              <div className="w-full h-1 bg-white/10 rounded overflow-hidden">
+                                              <div className="w-full h-1 bg-white/10 rounded overflow-clip">
                                                 <div className="h-full bg-[#00F0FF]" style={{ width: `${tutorialProgress}%` }}></div>
                                               </div>
                                             </div>
@@ -752,22 +1353,19 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                           className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-full min-h-0"
                         >
                           {/* Models Left selector list */}
-                          <div className={`col-span-1 lg:col-span-4 flex-col border border-white/5 bg-[#0B1221]/50 p-2.5 rounded-[1px] h-full min-h-0 overflow-hidden ${mobileViewMode === 'detail' ? 'hidden lg:flex' : 'flex mobile-slide-list'}`}>
+                          <div className={`col-span-1 lg:col-span-4 flex-col border border-white/5 bg-[#0B1221]/50 p-2.5 rounded-[1px] h-auto lg:h-full lg:min-h-0 ${mobileViewMode === 'detail' ? 'hidden lg:flex' : 'flex mobile-slide-list'}`}>
                             <div className="text-[8.5px] text-white/40 tracking-widest uppercase mb-2 select-none border-b border-white/5 pb-1 flex justify-between flex-shrink-0">
-                              <span>SELECIONE O SISTEMA CHIP</span>
+                              <span>SELECIONE UM MODELO IA</span>
                               <span className="text-orange-500 font-bold">[{filteredModels.length}]</span>
                             </div>
-                            <div className="flex-grow flex flex-col gap-1.5 overflow-y-auto custom-scroll pr-1">
+                            <div className="flex-1 flex flex-col gap-1.5 overflow-visible lg:overflow-y-auto custom-scroll pr-1">
                               {filteredModels.map((model) => {
                                 const isSelected = selectedModelId === model.id;
                                 return (
                                   <button
                                     key={model.id}
-                                    onClick={() => {
-                                      runModelPlaygroundDemo(model.id, 'code_design');
-                                      setMobileViewMode('detail');
-                                    }}
-                                    className={`relative p-2 border text-left flex items-center gap-2 rounded-[2px] transition-all duration-150 active:scale-98 select-target ${
+                                    onClick={() => { runModelPlaygroundDemo(model.id, 'code_design'); setMobileViewMode('detail'); document.querySelector('.terminal-modal')?.scrollTo({top: 0, behavior: 'smooth'}); }}
+                                    className={`relative p-3 sm:p-2 border text-left flex items-center gap-2 rounded-[2px] transition-all duration-150 active:scale-98 select-target ${
                                       isSelected
                                         ? 'border-[#FF4500] bg-gradient-to-r from-[#FF4500]/10 to-orange-500/5'
                                         : 'border-white/5 bg-black/35 hover:border-white/10 hover:bg-black/50 text-white/50'
@@ -789,17 +1387,17 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                           </div>
 
                           {/* Model Details Right Card */}
-                          <div className={`col-span-1 lg:col-span-8 border border-white/10 bg-[#070D18]/90 p-4 rounded-[1px] h-full flex-col min-h-0 justify-between ${mobileViewMode === 'list' ? 'hidden lg:flex' : 'flex mobile-slide-detail'}`}>
+                          <div className={`col-span-1 lg:col-span-8 border border-white/10 bg-[#070D18]/90 p-4 rounded-[1px] h-auto lg:h-full lg:min-h-0 overflow-clip flex-col justify-start lg:justify-between ${mobileViewMode === 'list' ? 'hidden lg:flex' : 'flex mobile-slide-detail'}`}>
                             {(() => {
                               const activeModel = filteredModels.find(m => m.id === selectedModelId) || filteredModels[0] || ecosystemData.models[0];
                               if (!activeModel) return null;
                               const isCopied = copiedId === activeModel.id;
                               return (
                                 <div className="flex-1 flex flex-col justify-between gap-3 min-h-0">
-                                  <div className="flex flex-col gap-3 min-h-0 overflow-y-auto custom-scroll flex-1 pr-1 pb-1">
+                                  <div className="flex flex-col gap-3 min-h-0 overflow-visible lg:overflow-y-auto custom-scroll flex-1 lg:pr-1 lg:pb-1">
                                     <button 
-                                      className="lg:hidden text-[#FF4500] hover:text-white flex items-center gap-1.5 font-mono text-[10px] uppercase font-bold self-start bg-white/5 px-2 py-1.5 rounded-[1px] border border-white/5 active:scale-95 transition-all w-fit mb-1"
-                                      onClick={() => setMobileViewMode('list')}
+                                      className="lg:hidden text-[#FF4500] hover:text-white flex items-center justify-center gap-2 font-mono text-[12px] uppercase font-bold w-full bg-[#FF4500]/10 px-4 py-3 rounded-[2px] border border-[#FF4500]/30 active:scale-95 transition-all mb-4"
+                                      onClick={() => { setMobileViewMode('list'); document.querySelector('.terminal-modal')?.scrollTo({top: 0, behavior: 'instant'}); }}
                                     >
                                       <ArrowLeft size={12} />
                                       <span>Voltar para Lista</span>
@@ -810,12 +1408,12 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                                         <span className="text-[8px] font-bold uppercase tracking-widest bg-[#FF4500] px-1.5 py-0.5 rounded-[1px]">TEMPLATE ATIVO</span>
                                         <span className="text-[8px] text-white/35 font-mono">// CONEXÃO DIRETA</span>
                                       </div>
-                                      <h4 className="text-base font-bold text-white uppercase tracking-wide leading-tight">{activeModel.name}</h4>
-                                      <p className="text-[11px] text-slate-350 leading-relaxed font-sans mt-0.5">{activeModel.bestFor}</p>
+                                      <h4 className="text-[18px] sm:text-base font-bold text-white uppercase tracking-wide leading-tight">{activeModel.name}</h4>
+                                      <p className="hidden sm:block text-[11px] text-slate-350 leading-relaxed font-sans mt-0.5">{activeModel.bestFor}</p>
                                     </div>
 
                                     {/* Pros & Cons list bullet structures */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[10.5px]">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[12px] sm:text-[10.5px]">
                                       <div className="bg-black/30 p-2.5 border border-white/5 rounded-[1px]">
                                         <span className="text-[8.5px] font-bold text-[#00F0FF] tracking-wider block mb-1.5 uppercase">// MELHOR PERFORMADO:</span>
                                         <ul className="space-y-1 text-white/70 font-sans">
@@ -842,7 +1440,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                                     </div>
 
                                     {/* Interactive Simulation Sandbox CLI */}
-                                    <div className="bg-[#020408] border border-[#00F0FF]/15 rounded p-2.5 text-[10.5px] flex flex-col space-y-2">
+                                    <div className="bg-[#020408] border border-[#00F0FF]/15 rounded p-2.5 text-[12px] sm:text-[10.5px] flex flex-col space-y-2">
                                       <div className="flex justify-between items-center pb-1.5 border-b border-white/5 select-none font-mono">
                                         <span className="text-[9px] text-[#00F0FF] font-bold uppercase tracking-widest flex items-center gap-1">
                                           <MessageSquare size={10} />
@@ -853,7 +1451,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                                       <div className="flex flex-wrap gap-1.5">
                                         <button 
                                           onClick={() => runModelPlaygroundDemo(activeModel.id, 'code_design')}
-                                          className={`px-2 py-1 font-mono text-[9px] uppercase tracking-wider rounded border transition-all active:scale-95 ${
+                                          className={`px-3 py-1.5 font-mono text-[9px] uppercase tracking-wider rounded border transition-all active:scale-95 ${
                                             playgroundInput === 'code_design' ? 'border-[#00F0FF] bg-[#00F0FF]/10 text-white' : 'border-white/5 bg-white/5 text-white/40'
                                           }`}
                                         >
@@ -861,7 +1459,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                                         </button>
                                         <button 
                                           onClick={() => runModelPlaygroundDemo(activeModel.id, 'copy')}
-                                          className={`px-2 py-1 font-mono text-[9px] uppercase tracking-wider rounded border transition-all active:scale-95 ${
+                                          className={`px-3 py-1.5 font-mono text-[9px] uppercase tracking-wider rounded border transition-all active:scale-95 ${
                                             playgroundInput === 'copy' ? 'border-[#00F0FF] bg-[#00F0FF]/10 text-white' : 'border-white/5 bg-white/5 text-white/40'
                                           }`}
                                         >
@@ -869,7 +1467,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                                         </button>
                                         <button 
                                           onClick={() => runModelPlaygroundDemo(activeModel.id, 'context')}
-                                          className={`px-2 py-1 font-mono text-[9px] uppercase tracking-wider rounded border transition-all active:scale-95 ${
+                                          className={`px-3 py-1.5 font-mono text-[9px] uppercase tracking-wider rounded border transition-all active:scale-95 ${
                                             playgroundInput === 'context' ? 'border-[#00F0FF] bg-[#00F0FF]/10 text-white' : 'border-white/5 bg-white/5 text-white/40'
                                           }`}
                                         >
@@ -877,7 +1475,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                                         </button>
                                       </div>
 
-                                      <div className="bg-black/80 p-2.5 h-28 rounded border border-white/5 font-mono overflow-y-auto custom-scroll relative">
+                                      <div className="bg-black/80 p-2.5 h-28 rounded border border-white/5 font-mono overflow-visible lg:overflow-y-auto custom-scroll relative">
                                         {isTypingPlayground && (
                                           <div className="absolute top-1 right-1 bg-[#FF4500]/10 border border-[#FF4500]/25 text-[#FF4500] text-[7.5px] py-0.5 px-1.5 rounded animate-pulse">
                                             PROCESSANDO...
@@ -893,7 +1491,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                                     {/* Meta Instruction code to copy */}
                                     <div className="bg-[#051121]/50 border border-[#00F0FF]/15 p-2.5 rounded-[1px]">
                                       <span className="text-[8.5px] text-[#FF4500] font-black block mb-1 uppercase font-mono">[ DIRECT DIRETIVA SISTEMA DE ELITE ]</span>
-                                      <div className="text-[10px] leading-relaxed text-slate-300 font-mono bg-black/50 p-2 border border-white/5 rounded max-h-16 overflow-y-auto custom-scroll selection:bg-[#FF4500]">
+                                      <div className="text-[10px] leading-relaxed text-slate-300 font-mono bg-black/50 p-2 border border-white/5 rounded max-h-16 overflow-visible lg:overflow-y-auto custom-scroll selection:bg-[#FF4500]">
                                         {activeModel.metaPrompt}
                                       </div>
                                     </div>
@@ -902,7 +1500,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                                   <div className="flex flex-col sm:flex-row gap-2 items-center justify-between mt-1 pt-1.5 border-t border-white/5">
                                     <button
                                       onClick={() => handleCopy(activeModel.metaPrompt, activeModel.id)}
-                                      className={`cursor-target py-2 px-3 font-mono text-[9.5px] font-black uppercase tracking-widest border rounded-[2px] flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 w-full sm:w-auto ${
+                                      className={`cursor-target py-3 sm:py-2 px-3 font-mono text-[9.5px] font-black uppercase tracking-widest border rounded-[2px] flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 w-full sm:w-auto ${
                                         isCopied 
                                           ? 'bg-[#00F0FF] border-[#00F0FF] text-black animate-pulse' 
                                           : 'bg-black/60 border-white/10 hover:border-[#00F0FF]/50 hover:bg-[#00F0FF]/5 text-white/80 hover:text-white'
@@ -923,465 +1521,7 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                         </motion.div>
                       )}
 
-                      {/* CATEGORY 3: MÁQUINA DE CRIAÇÃO */}
-                      {activeTab === 'creations' && (
-                        <motion.div 
-                          key="creations"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.15 }}
-                          className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-full min-h-0"
-                        >
-                          {/* Creations Left List */}
-                          <div className={`col-span-1 lg:col-span-4 flex-col border border-white/5 bg-[#0B1221]/50 p-2.5 rounded-[1px] h-full min-h-0 overflow-hidden ${mobileViewMode === 'detail' ? 'hidden lg:flex' : 'flex mobile-slide-list'}`}>
-                            <div className="text-[8.5px] text-white/40 tracking-widest uppercase mb-2 select-none border-b border-white/5 pb-1 flex justify-between flex-shrink-0">
-                              <span>SELECIONE BLUEPRINT</span>
-                              <span className="text-orange-500 font-bold">[{filteredCreations.length}]</span>
-                            </div>
-                            <div className="flex-grow flex flex-col gap-1.5 overflow-y-auto custom-scroll pr-1">
-                              {filteredCreations.map((item) => {
-                                const isSelected = selectedCreationId === item.id;
-                                return (
-                                  <button
-                                    key={item.id}
-                                    onClick={() => {
-                                      setSelectedCreationId(item.id);
-                                      setActiveCreationDemoId(null);
-                                      setMobileViewMode('detail');
-                                    }}
-                                    className={`text-left p-2 border transition-all duration-150 flex flex-col rounded-[2px] active:scale-98 select-target ${
-                                      isSelected 
-                                        ? "border-[#FF4500] bg-[#FF4500]/10 text-white" 
-                                        : "border-white/5 bg-black/35 text-white/50 hover:text-white"
-                                    }`}
-                                  >
-                                    <span className="text-[10px] font-black tracking-wide uppercase truncate block leading-tight">{item.title}</span>
-                                    <span className="text-[7.5px] text-white/30 tracking-wider truncate block mt-0.5 uppercase">TIPO: {item.type.toUpperCase()}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          {/* Creations Right Details Card */}
-                          <div className={`col-span-1 lg:col-span-8 border border-white/10 bg-[#0B1221]/90 p-4 rounded-[1px] h-full flex-col min-h-0 justify-between ${mobileViewMode === 'list' ? 'hidden lg:flex' : 'flex mobile-slide-detail'}`}>
-                            {(() => {
-                              const item = filteredCreations.find(c => c.id === selectedCreationId) || filteredCreations[0] || ecosystemData.creations[0];
-                              if (!item) return null;
-                              const isCopied = copiedId === item.id;
-                              const isDemoActive = activeCreationDemoId === item.id;
-                              return (
-                                <div className="flex-1 flex flex-col justify-between gap-3 min-h-0">
-                                  <div className="flex flex-col gap-3 min-h-0 overflow-y-auto custom-scroll flex-1 pr-1 pb-1">
-                                    <button 
-                                      className="lg:hidden text-[#FF4500] hover:text-white flex items-center gap-1.5 font-mono text-[10px] uppercase font-bold self-start bg-white/5 px-2 py-1.5 rounded-[1px] border border-white/5 active:scale-95 transition-all w-fit"
-                                      onClick={() => setMobileViewMode('list')}
-                                    >
-                                      <ArrowLeft size={12} />
-                                      <span>Voltar para Lista</span>
-                                    </button>
-
-                                    <div className="flex items-center gap-1.5 mb-0.5 mt-1">
-                                      <span className="text-[8px] font-bold uppercase tracking-widest text-[#FF4500] border border-[#FF4500]/35 px-1.5 py-0.5 rounded-[1px] bg-[#FF4500]/5 leading-none">
-                                         CATEGORIA: {item.type.toUpperCase()}
-                                      </span>
-                                    </div>
-                                    <h3 className="text-sm font-bold uppercase tracking-wide text-white leading-tight">{item.title}</h3>
-                                    <p className="text-[11.5px] text-white/60 leading-relaxed font-sans">
-                                      {item.description}
-                                    </p>
-
-                                    {/* Action Workflow Columns */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[11px]">
-                                       <div className="p-2.5 bg-black/35 border border-white/5 rounded-[1px]">
-                                          <strong className="text-[#FF4500] font-mono text-[8.5px] uppercase block mb-1 font-bold">// EXECUÇÃO CONCEITUAL:</strong>
-                                          <p className="text-[10.5px] text-white/70 font-sans leading-normal">
-                                             {item.howToExecute}
-                                           </p>
-                                       </div>
-                                       <div className="p-2.5 bg-black/35 border border-white/5 rounded-[1px]">
-                                          <strong className="text-[#00F0FF] font-mono text-[8.5px] uppercase block mb-1 font-bold">// FLUXO COMPLETO:</strong>
-                                          <p className="text-[10.5px] text-white/70 font-sans leading-normal">
-                                             {item.recommendedWorkflow}
-                                           </p>
-                                       </div>
-                                    </div>
-
-                                    {/* Simulated Interactive Execution Frame */}
-                                    <div className="border border-white/5 bg-black/55 p-3 rounded-[1px] relative overflow-hidden min-h-[140px] flex flex-col justify-between">
-                                      <div className="flex justify-between items-center text-[7.5px] font-mono text-white/30 select-none pb-1 border-b border-white/5">
-                                        <span>[ RENDERIZADOR BLUEPRINT GRAPHIC FRAME ]</span>
-                                        <span className="text-[#FF4500]">GPU_COCONECT</span>
-                                      </div>
-
-                                      {!isDemoActive ? (
-                                        <div className="flex-grow flex flex-col justify-center items-center py-4 select-none">
-                                          <Smartphone size={18} className="text-white/20 mb-1.5 animate-pulse" />
-                                          <button 
-                                            onClick={() => {
-                                              setActiveCreationDemoId(item.id);
-                                              setClicksCount(0);
-                                            }}
-                                            className="px-3 py-1 font-mono text-[9px] border border-[#00F0FF] text-[#00F0FF] bg-[#00F0FF]/5 hover:bg-[#00F0FF]/15 uppercase tracking-widest rounded transition-all active:scale-95 cursor-target"
-                                          >
-                                            [ SIMULAR COMPILADOR DEMO ]
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <div className="flex-grow flex flex-col justify-between bg-[#02050A] p-2 rounded border border-white/10 relative mt-2 text-[10px]">
-                                          <button 
-                                            onClick={() => setActiveCreationDemoId(null)}
-                                            className="absolute top-1 right-1 text-white/40 hover:text-white"
-                                          >
-                                            <X size={10} />
-                                          </button>
-
-                                          {item.type === '3d' && (
-                                            <div className="flex flex-col items-center justify-center py-2 select-none">
-                                              <span className="text-[7.5px] text-[#00F0FF] mb-1.5 tracking-wider">[SIMULANDO ROTAÇÃO CANVAS WEBGL]</span>
-                                              <div className="w-14 h-14 rounded-full border border-dashed border-[#00F0FF]/40 flex items-center justify-center relative animate-spin [animation-duration:10s]">
-                                                <div className="w-9 h-9 border border-dashed border-[#00F0FF]/60 rounded-full flex items-center justify-center animate-spin [animation-direction:reverse] [animation-duration:5s]">
-                                                  <div className="w-2.5 h-2.5 bg-[#FF4500] rounded-full"></div>
-                                                </div>
-                                              </div>
-                                            </div>
-                                          )}
-
-                                          {item.type === 'mobile' && (
-                                            <div className="flex flex-col items-center justify-center select-none py-1 h-full">
-                                              <div className="w-[100px] h-[90px] bg-[#0E1528] rounded-lg border border-white/25 p-1.5 relative flex flex-col justify-between shadow-md">
-                                                <div className="w-8 h-1.5 bg-black rounded-b mx-auto absolute top-0 left-1/2 -translate-x-1/2"></div>
-                                                <div className="flex flex-col items-center mt-1">
-                                                  <span className="text-[8px] text-[#00F0FF] font-mono leading-none">Cliques: [ {clicksCount} ]</span>
-                                                  <button 
-                                                    onClick={() => setClicksCount(c => c + 1)}
-                                                    className="px-2 py-0.5 bg-[#FF4500] text-white text-[8px] uppercase tracking-widest font-black rounded-sm active:scale-90 duration-75 cursor-target border-none mt-1 font-mono"
-                                                  >
-                                                    Clicar
-                                                  </button>
-                                                </div>
-                                              </div>
-                                            </div>
-                                          )}
-
-                                          {item.type === 'video' && (
-                                            <div className="flex flex-col items-center justify-center select-none py-1.5">
-                                              <span className="text-[7.5px] text-[#00F0FF] block mb-1">[PROMO_VIDEO_CAM_PLAYBACK.MP4]</span>
-                                              <div className="w-full h-11 bg-gradient-to-r from-[#02050C] to-zinc-950 border border-white/5 relative flex items-center justify-center rounded">
-                                                <div className="flex items-center gap-1">
-                                                  <Play size={10} className="text-[#FF4500] animate-bounce" />
-                                                  <span className="text-[8px] font-mono text-white/40 uppercase">Sincronizando Drone 8K</span>
-                                                </div>
-                                              </div>
-                                            </div>
-                                          )}
-
-                                          {item.type === 'animation' && (
-                                            <div className="flex flex-col items-center justify-center select-none py-2">
-                                              <span className="text-[7.5px] text-[#00F0FF] block mb-1">[CARROSSEL MARQUEE INFINITO]</span>
-                                              <div className="w-full bg-[#050B14] p-1 border border-white/5 rounded relative overflow-hidden">
-                                                <div className="flex gap-2 uppercase text-[7px] text-[#FF4500]/70 font-mono tracking-widest animate-pulse">
-                                                  <span>[COORD] // INUX47 • COPIAR_PASTE_READY</span>
-                                                </div>
-                                              </div>
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {/* Blueprint inject prompt */}
-                                    <div className="bg-[#050D18] border border-[#00F0FF]/15 p-2.5 rounded-[1.5px]">
-                                       <span className="text-[8.5px] text-[#FF4500] font-bold block mb-1 font-mono tracking-widest">[ PROMPT DE INJEÇÃO ULTRA-VELOCIDADE ]</span>
-                                       <div className="text-[10.5px] leading-relaxed text-white/95 font-mono break-all max-h-20 overflow-y-auto custom-scroll selection:bg-[#FF4500]">
-                                          {item.promptToCopy}
-                                       </div>
-                                    </div>
-                                  </div>
-
-                                  <button
-                                      onClick={() => handleCopy(item.promptToCopy, item.id)}
-                                      className={`cursor-target w-full py-2 px-3 font-mono text-[10px] font-black uppercase tracking-widest border rounded-[2px] flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 flex-shrink-0 mt-1 ${
-                                        isCopied 
-                                          ? 'bg-[#FF4500] border-[#FF4500] text-white animate-pulse' 
-                                          : 'bg-black/55 border-white/10 hover:border-[#FF4500]/50 hover:bg-[#FF4500]/5 text-white/80 hover:text-white'
-                                      }`}
-                                  >
-                                    {isCopied ? <Check size={11} /> : <Copy size={11} />}
-                                    <span>{isCopied ? "PROMPT COPIADO COM SUCESSO!" : "COPIAR PROMPT DE CONSTRUÇÃO"}</span>
-                                  </button>
-
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* CATEGORY 4: COFRE DE AUTOMOTORES */}
-                      {activeTab === 'automations' && (
-                        <motion.div 
-                          key="automations"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.15 }}
-                          className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-full min-h-0"
-                        >
-                          {/* Automations Left List */}
-                          <div className={`col-span-1 lg:col-span-4 flex-col border border-white/5 bg-[#0B1221]/50 p-2.5 rounded-[1px] h-full min-h-0 overflow-hidden ${mobileViewMode === 'detail' ? 'hidden lg:flex' : 'flex mobile-slide-list'}`}>
-                            <div className="text-[8.5px] text-white/40 tracking-widest uppercase mb-2 select-none border-b border-white/5 pb-1 flex justify-between flex-shrink-0">
-                              <span>SELECIONE AUTOMOTO</span>
-                              <span className="text-orange-500 font-bold">[{filteredAutomations.length}]</span>
-                            </div>
-                            <div className="flex-grow flex flex-col gap-1.5 overflow-y-auto custom-scroll pr-1">
-                              {filteredAutomations.map((item) => {
-                                const isSelected = selectedAutomationId === item.id;
-                                return (
-                                  <button
-                                    key={item.id}
-                                    onClick={() => {
-                                      setSelectedAutomationId(item.id);
-                                      setRunningAutomationId(null);
-                                      setMobileViewMode('detail');
-                                    }}
-                                    className={`text-left p-2 border transition-all duration-150 flex flex-col rounded-[2px] active:scale-98 select-target ${
-                                      isSelected 
-                                        ? "border-[#FF4500] bg-[#FF4500]/10 text-white" 
-                                        : "border-white/5 bg-black/35 text-white/50 hover:text-white"
-                                    }`}
-                                  >
-                                    <span className="text-[10px] font-black tracking-wide uppercase truncate block leading-tight">{item.title}</span>
-                                    <span className="text-[7.5px] text-white/30 tracking-wider truncate block mt-0.5 uppercase">RODAR EM: {item.whereToRun.slice(0, 20)}...</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          {/* Automations Right Details Card */}
-                          <div className={`col-span-1 lg:col-span-8 border border-white/10 bg-[#0B1221]/90 p-4 rounded-[1px] h-full flex-col min-h-0 justify-between ${mobileViewMode === 'list' ? 'hidden lg:flex' : 'flex mobile-slide-detail'}`}>
-                            {(() => {
-                              const item = filteredAutomations.find(a => a.id === selectedAutomationId) || filteredAutomations[0] || ecosystemData.automations[0];
-                              if (!item) return null;
-                              const isCopied = copiedId === item.id;
-                              const isThisRunning = runningAutomationId === item.id;
-                              return (
-                                <div className="flex-1 flex flex-col justify-between gap-3 min-h-0">
-                                  <div className="flex flex-col gap-3 min-h-0 overflow-y-auto custom-scroll flex-1 pr-1 pb-1">
-                                    <button 
-                                      className="lg:hidden text-[#FF4500] hover:text-white flex items-center gap-1.5 font-mono text-[10px] uppercase font-bold self-start bg-white/5 px-2 py-1.5 rounded-[1px] border border-white/5 active:scale-95 transition-all w-fit mb-1"
-                                      onClick={() => setMobileViewMode('list')}
-                                    >
-                                      <ArrowLeft size={12} />
-                                      <span>Voltar para Lista</span>
-                                    </button>
-
-                                    <div className="flex justify-between items-start border-b border-white/15 pb-1">
-                                       <div>
-                                          <div className="flex items-center gap-1.5 mb-1">
-                                             <span className="text-[8px] font-bold font-mono uppercase tracking-widest text-black bg-[#00F0FF] px-1.5 py-0.5 rounded-[1px] leading-none">
-                                                LOCAL: {item.whereToRun}
-                                             </span>
-                                          </div>
-                                          <h3 className="text-sm font-bold uppercase text-white tracking-wide leading-tight">{item.title}</h3>
-                                          <p className="text-[11.5px] text-white/60 leading-relaxed font-sans mt-0.5">
-                                             {item.description}
-                                          </p>
-                                       </div>
-                                    </div>
-
-                                    {/* Action instructions steps */}
-                                    <div className="mb-1">
-                                       <strong className="text-[#FF4500] font-mono text-[8.5px] tracking-widest uppercase block mb-1 font-black">// PASSO A PASSO TÁTICO DE EXECUÇÃO:</strong>
-                                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-1.5">
-                                          {item.steps.map((step, idx) => (
-                                            <div key={idx} className="bg-black/35 p-2 border border-white/5 relative rounded-[1px] min-h-[44px]">
-                                               <div className="absolute top-1 right-1 text-[8px] font-bold text-white/15">{idx + 1}</div>
-                                               <span className="text-[9.5px] font-sans text-white/70 leading-snug block pr-2">{step}</span>
-                                            </div>
-                                          ))}
-                                       </div>
-                                    </div>
-
-                                    {/* Code Block & Terminal Console Grid split inside */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 min-h-0">
-                                      {/* Code visual */}
-                                      <div className="sm:col-span-7 bg-[#02050A] border border-white/5 p-2 rounded-[1.5px] relative">
-                                         <span className="text-[7.5px] text-white/30 font-bold uppercase tracking-widest font-mono block mb-1">CONSOLE_CORE_CODE</span>
-                                         <pre className="font-mono text-[10.5px] leading-relaxed text-slate-350 overflow-x-auto max-h-24 custom-scroll select-all">
-                                            <code>{item.codeToCopy}</code>
-                                         </pre>
-                                      </div>
-
-                                      {/* Interactive execution logs output terminal */}
-                                      <div className="sm:col-span-5 bg-[#030107] border border-[#FF4500]/25 rounded p-2 flex flex-col justify-between h-28 font-mono text-[9px]">
-                                        <div className="flex justify-between items-center text-[7.5px] text-[#FF4500] border-b border-white/5 pb-1 select-none">
-                                          <span>INTELLIGENT SHELL</span>
-                                          <span className="animate-pulse">ONLINE</span>
-                                        </div>
-
-                                        {!isThisRunning || automationLogs.length === 0 ? (
-                                          <div className="flex-grow flex flex-col items-center justify-center text-center">
-                                            <button 
-                                              onClick={() => runAutomationScript(item.id, item.codeToCopy)}
-                                              className="px-2 py-0.5 bg-[#FF4500]/10 border border-[#FF4500] text-[#FF4500] hover:bg-[#FF4500]/20 rounded text-[9px] uppercase font-black tracking-widest cursor-target flex items-center gap-1"
-                                            >
-                                              <Terminal size={10} />
-                                              <span>AUTO RODAR</span>
-                                            </button>
-                                          </div>
-                                        ) : (
-                                          <div className="flex-grow text-[8px] text-emerald-400 leading-normal py-1 select-text max-h-20 overflow-y-auto custom-scroll">
-                                            {automationLogs.map((log, index) => (
-                                              <div key={index} className="truncate">
-                                                {log}
-                                              </div>
-                                            ))}
-                                            {isAutomationActive && <span className="inline-block w-1.5 h-2.5 bg-cyan-400 animate-[blink_0.8s_infinite] ml-0.5"></span>}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Output info & Copy */}
-                                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2 border-t border-white/5 flex-shrink-0">
-                                     <div className="text-[10px] text-white/30 font-sans">
-                                        <strong className="text-[#00F0FF] font-mono block text-[8px] uppercase">// RETORNO ESPERADO:</strong>
-                                        {item.outputFormat}
-                                     </div>
-
-                                     <button
-                                        onClick={() => handleCopy(item.codeToCopy, item.id)}
-                                        className={`cursor-target px-5 py-2 font-mono text-[10px] font-black uppercase tracking-widest border rounded-[2px] flex items-center justify-center gap-1.5 transition-all duration-150 w-full sm:w-auto active:scale-95 ${
-                                          isCopied 
-                                            ? 'bg-[#00F0FF] border-[#00F0FF] text-black animate-pulse' 
-                                            : 'bg-black/60 border-white/10 hover:border-[#00F0FF]/50 hover:bg-[#00F0FF]/5 text-white/80 hover:text-white'
-                                        }`}
-                                     >
-                                       {isCopied ? <Check size={11} /> : <Copy size={11} />}
-                                       <span>{isCopied ? "COPIADO!" : "COPIAR SCRIPT"}</span>
-                                     </button>
-                                  </div>
-
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* CATEGORY 5: HACKS DE PRODUTIVIDADE */}
-                      {activeTab === 'productivity' && (
-                        <motion.div 
-                          key="productivity"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.15 }}
-                          className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-full min-h-0"
-                        >
-                          {/* Productivity Left List */}
-                          <div className={`col-span-1 lg:col-span-4 flex-col border border-white/5 bg-[#0B1221]/50 p-2.5 rounded-[1px] h-full min-h-0 overflow-hidden ${mobileViewMode === 'detail' ? 'hidden lg:flex' : 'flex mobile-slide-list'}`}>
-                            <div className="text-[8.5px] text-white/40 tracking-widest uppercase mb-2 select-none border-b border-white/5 pb-1 flex justify-between flex-shrink-0">
-                              <span>SELECIONE O HACK</span>
-                              <span className="text-orange-500 font-bold">[{filteredProductivity.length}]</span>
-                            </div>
-                            <div className="flex-grow flex flex-col gap-1.5 overflow-y-auto custom-scroll pr-1">
-                              {filteredProductivity.map((item) => {
-                                const isSelected = selectedProductivityId === item.id;
-                                return (
-                                  <button
-                                    key={item.id}
-                                    onClick={() => {
-                                      setSelectedProductivityId(item.id);
-                                      setMobileViewMode('detail');
-                                    }}
-                                    className={`text-left p-2 border transition-all duration-150 flex flex-col rounded-[2px] active:scale-98 select-target ${
-                                      isSelected 
-                                        ? "border-[#FF4500] bg-[#FF4500]/10 text-white" 
-                                        : "border-white/5 bg-black/35 text-white/50 hover:text-white"
-                                    }`}
-                                  >
-                                    <span className="text-[10px] font-black tracking-wide uppercase truncate block leading-tight">{item.title}</span>
-                                    <span className="text-[7.5px] text-white/30 tracking-wider truncate block mt-0.5 uppercase">MÉTODO: {item.framework}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          {/* Productivity Right Details Card */}
-                          <div className={`col-span-1 lg:col-span-8 border border-white/10 bg-[#0B1221]/90 p-4 rounded-[1px] h-full flex-col min-h-0 justify-between ${mobileViewMode === 'list' ? 'hidden lg:flex' : 'flex mobile-slide-detail'}`}>
-                            {(() => {
-                              const item = filteredProductivity.find(p => p.id === selectedProductivityId) || filteredProductivity[0] || ecosystemData.productivity[0];
-                              if (!item) return null;
-                              const isCopied = copiedId === item.id;
-                              return (
-                                <div className="flex-1 flex flex-col justify-between gap-3 min-h-0">
-                                  <div className="flex flex-col gap-3 min-h-0 overflow-y-auto custom-scroll flex-1 pr-1 pb-1">
-                                    <button 
-                                      className="lg:hidden text-[#FF4500] hover:text-white flex items-center gap-1.5 font-mono text-[10px] uppercase font-bold self-start bg-white/5 px-2 py-1.5 rounded-[1px] border border-white/5 active:scale-95 transition-all w-fit mb-1"
-                                      onClick={() => setMobileViewMode('list')}
-                                    >
-                                      <ArrowLeft size={12} />
-                                      <span>Voltar para Lista</span>
-                                    </button>
-
-                                    <div className="flex flex-col justify-between mb-1.5">
-                                       <div className="flex items-center gap-1.5 mb-1.5">
-                                          <span className="text-[8px] font-bold uppercase tracking-widest text-[#FF4500] border border-[#FF4500]/20 px-1.5 py-0.5 rounded-[1px] bg-[#FF4500]/5 leading-none">
-                                             METODOLOGIA: {item.framework}
-                                          </span>
-                                       </div>
-                                       <h3 className="text-sm font-bold uppercase text-white tracking-wide leading-tight">{item.title}</h3>
-                                    </div>
-
-                                    {/* Operational Before vs After Comparators */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 font-sans text-[11px] leading-relaxed">
-                                       <div className="p-2.5 bg-black/35 border border-white/5 rounded-[1px]">
-                                          <strong className="text-[#FF4500] font-mono text-[8px] tracking-wider block mb-1 uppercase select-none">// ANTIGO GARGALO OPERACIONAL:</strong>
-                                          <span className="text-white/65 text-[10px] leading-normal">{item.scenario}</span>
-                                       </div>
-                                       <div className="p-2.5 bg-[#00F0FF]/5 border border-[#00F0FF]/15 rounded-[1px]">
-                                          <strong className="text-[#00F0FF] font-mono text-[8px] tracking-wider block mb-1 uppercase select-none">// RESULTADO DA I.A. ENTREGUE:</strong>
-                                          <span className="text-white/75 text-[10px] leading-normal">{item.expectedResult}</span>
-                                       </div>
-                                    </div>
-
-                                    {/* Copy prompt code container */}
-                                    <div className="bg-[#03060C] border border-white/5 p-3 rounded-[1px]">
-                                       <span className="text-[8.5px] text-white/30 font-bold uppercase tracking-widest mb-1.5 font-mono block select-none">
-                                          PROMPT COPILOT DE ALTA ACELERAÇÃO
-                                       </span>
-                                       <div className="text-[10.5px] leading-relaxed text-slate-350 font-mono select-all break-words max-h-32 overflow-y-auto custom-scroll selection:bg-[#FF4500]">
-                                          {item.promptToCopy}
-                                       </div>
-                                    </div>
-                                  </div>
-
-                                  <button
-                                      onClick={() => handleCopy(item.promptToCopy, item.id)}
-                                      className={`cursor-target w-full py-2 px-3 font-mono text-[10px] font-black uppercase tracking-widest border rounded-[2px] flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 flex-shrink-0 mt-1 ${
-                                        isCopied 
-                                          ? 'bg-[#FF4500] border-[#FF4500] text-white font-bold animate-pulse' 
-                                          : 'bg-black/55 border-white/10 hover:border-[#FF4500]/50 hover:bg-[#FF4500]/5 text-white/80 hover:text-white'
-                                      }`}
-                                  >
-                                    {isCopied ? <Check size={11} /> : <Copy size={11} />}
-                                    <span>{isCopied ? "PROMPT COPIADO COM SUCESSO!" : "COPIAR PROMPT DE ACELERAÇÃO"}</span>
-                                  </button>
-
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        </motion.div>
-                      )}
-
-                  </AnimatePresence>
+                      </AnimatePresence>
              </div>
           </div>
         </div>
