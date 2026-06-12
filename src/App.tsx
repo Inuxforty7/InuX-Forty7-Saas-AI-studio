@@ -18,7 +18,8 @@ import {
   ChevronsUp,
 } from "lucide-react";
 import ShinyText from "./components/ShinyText";
-import TerminalPanel from "./components/TerminalPanel";
+import { lazy, Suspense } from "react";
+const TerminalPanel = lazy(() => import("./components/TerminalPanel"));
 import TargetCursor from "./components/TargetCursor";
 import RetroTvFrame from "./components/RetroTvFrame";
 import { useState, useEffect } from "react";
@@ -869,7 +870,7 @@ export default function App() {
         parallaxOn={true}
       />
       <RetroTvFrame />
-      {showTerminal && <TerminalPanel onClose={closeTerminal} />}
+      {showTerminal && <Suspense fallback={<div className="fixed inset-0 z-[100] bg-[#03070D] flex items-center justify-center text-white font-mono text-[10px]">INICIALIZANDO TERMINAL OMNI...</div>}><TerminalPanel onClose={closeTerminal} /></Suspense>}
 
       {/* Virtual Scroll Track */}
       <div
@@ -913,6 +914,7 @@ export default function App() {
           >
             <video
               ref={videoRef}
+              poster="https://res.cloudinary.com/dwlfwnbt0/video/upload/so_0,f_jpg/v1777566643/v2_hero_jiik6p.jpg"
               className="w-full h-[55vh] md:w-[92vw] lg:w-[88vw] xl:w-[84vw] md:h-full object-cover object-top md:object-cover opacity-90 scale-[1.05] md:scale-[1.02] origin-center transition-transform duration-700 [mask-image:linear-gradient(to_bottom,black_60%,transparent_100%)] md:[mask-image:linear-gradient(to_bottom,black_50%,rgba(0,0,0,0.85)_70%,rgba(0,0,0,0.4)_85%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_60%,transparent_100%)] md:[-webkit-mask-image:linear-gradient(to_bottom,black_50%,rgba(0,0,0,0.85)_70%,rgba(0,0,0,0.4)_85%,transparent_100%)]"
               muted
               playsInline
@@ -1352,6 +1354,7 @@ export default function App() {
 
                           <video
                             src={card.videoSrc}
+                            poster={card.videoSrc.replace("/video/upload/", "/video/upload/so_0,f_jpg/").replace(".mp4", ".jpg")}
                             className="w-full h-full object-cover scale-[1.02] group-hover/card:scale-[1.08] transition-transform duration-700 brightness-[0.8] group-hover/card:brightness-100"
                             autoPlay
                             muted

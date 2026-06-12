@@ -503,7 +503,8 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
           <div className="lg:hidden w-full relative mb-1 flex-shrink-0">
             {/* Scroll/Swipe horizontal hint gradient */}
             <div className="absolute right-0 top-0 bottom-2 w-8 bg-gradient-to-l from-[#03070D] to-transparent pointer-events-none z-10"></div>
-            <div className="w-full flex overflow-x-auto gap-1.5 pb-2 pt-0.5 snap-x hidden-scrollbar scroll-smooth pl-1 pr-6">
+            <div className="w-full relative"><div className="absolute right-0 top-1/2 -translate-y-1/2 bg-gradient-to-l from-black via-black/80 to-transparent pr-1 pl-4 py-1 z-10 pointer-events-none lg:hidden animate-pulse flex items-center gap-0.5"><span className="text-[8px] text-white/50 uppercase font-bold tracking-wider mr-1">ARRASTE</span><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/50"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></div></div>
+<div className="w-full flex overflow-x-auto gap-1.5 pb-2 pt-0.5 snap-x hidden-scrollbar scroll-smooth pl-1 pr-6">
               {categories.map((cat, idx) => {
               const isActive = activeTab === cat.id;
               const mobileLabels: Record<string, string> = {
@@ -665,13 +666,19 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                                     <button
                                       key={item.id}
                                       onClick={() => { setSelectedPromptId(item.id); setMobileViewMode('detail'); document.querySelector('.terminal-modal')?.scrollTo({top: 0, behavior: 'smooth'}); }}
-                                      className={`text-left p-4 sm:p-3 border transition-all duration-150 flex flex-col rounded-[2px] active:scale-98 select-target ${
+                                      className={`text-left p-4 sm:p-3 w-full min-w-0 overflow-hidden border transition-all duration-150 flex flex-col rounded-[2px] active:scale-98 select-target ${
                                         isSelected 
                                           ? "border-[#FF4500] bg-[#FF4500]/10 text-white" 
                                           : "border-white/5 bg-black/35 text-white/50 hover:text-white"
                                       }`}
                                     >
-                                      <div className="flex justify-between items-center w-full"><div className="flex flex-col overflow-clip"><span className="text-[14px] font-black tracking-wide uppercase truncate block leading-tight">{item.title}</span><span className="text-[11px] text-white/50 uppercase mt-1.5 tracking-wider truncate">{item.idealModel}</span></div><ChevronRight size={16} className="text-white/20 flex-shrink-0" /></div>
+                                      <div className="flex justify-between items-center w-full gap-2 min-w-0">
+                                        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                                          <span className="text-[14px] font-black tracking-wide uppercase truncate block leading-tight">{item.title}</span>
+                                          <span className="text-[11px] text-white/50 uppercase mt-1.5 tracking-wider truncate">{item.idealModel}</span>
+                                        </div>
+                                        <ChevronRight size={16} className="text-white/20 flex-shrink-0" />
+                                      </div>
                                     </button>
                                   );
                                 })
@@ -808,7 +815,13 @@ const TerminalPanel = ({ onClose }: { onClose: () => void }) => {
                                                       >
                                                         {copiedId === 'pack-01' ? "[ COPIADO✓ ]" : "[ COPIAR PROMPT ]"}
                                                       </button>
-                                                      <pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-[#00F0FF] overflow-x-auto overflow-y-auto max-h-64 select-text">
+
+                                                      <div className="absolute top-2 left-2 z-10 pointer-events-none lg:hidden flex items-center gap-1.5 bg-[#03070D]/80 px-2 py-1 rounded-[1px] border border-white/10 opacity-90 animate-pulse">
+                                                         <span className="text-[7.5px] uppercase font-bold text-white/60 tracking-widest">ARRASTE PARA LER</span>
+                                                         <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                                                      </div>
+
+<pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-[#00F0FF] overflow-x-auto overflow-y-auto max-h-64 select-text">
                                                         <code>
 {`Using the current RichTech code I already generated, completely restructure the visual identity to match exactly the brand screenshot I will describe:
 - Logo: Blue circuit-style "R" + "RICHTECH" in bright blue (#00D4FF)
@@ -838,7 +851,13 @@ Rewrite the full code with the new visual identity.`}
                                                       >
                                                         {copiedId === 'pack-02' ? "[ COPIADO✓ ]" : "[ COPIAR PROMPT ]"}
                                                       </button>
-                                                      <pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-orange-500 overflow-x-auto overflow-y-auto max-h-64 select-text">
+
+                                                      <div className="absolute top-2 left-2 z-10 pointer-events-none lg:hidden flex items-center gap-1.5 bg-[#03070D]/80 px-2 py-1 rounded-[1px] border border-white/10 opacity-90 animate-pulse">
+                                                         <span className="text-[7.5px] uppercase font-bold text-white/60 tracking-widest">ARRASTE PARA LER</span>
+                                                         <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                                                      </div>
+
+<pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-orange-500 overflow-x-auto overflow-y-auto max-h-64 select-text">
                                                         <code>
 {`Using the current code I generated, restructure the entire visual identity to match exactly the Del Garden Services poster:
 - Logo: TDG (orange "T" + green "DG" with plant icon)
@@ -869,7 +888,13 @@ Rewrite the full code with the exact new visual identity from the poster.`}
                                                       >
                                                         {copiedId === 'pack-03' ? "[ COPIADO✓ ]" : "[ COPIAR PROMPT ]"}
                                                       </button>
-                                                      <pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-cyan-400 overflow-x-auto overflow-y-auto max-h-64 select-text">
+
+                                                      <div className="absolute top-2 left-2 z-10 pointer-events-none lg:hidden flex items-center gap-1.5 bg-[#03070D]/80 px-2 py-1 rounded-[1px] border border-white/10 opacity-90 animate-pulse">
+                                                         <span className="text-[7.5px] uppercase font-bold text-white/60 tracking-widest">ARRASTE PARA LER</span>
+                                                         <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                                                      </div>
+
+<pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-cyan-400 overflow-x-auto overflow-y-auto max-h-64 select-text">
                                                         <code>
 {`Using the current code, restructure the visual identity to match exactly the "4YOU TECH & SERVICE" poster:
 - Logo: Circular "YOU TECH 4 SERVICE" in cyan/blue
@@ -899,7 +924,13 @@ Rewrite the full code with the exact new visual identity.`}
                                                       >
                                                         {copiedId === 'pack-04' ? "[ COPIADO✓ ]" : "[ COPIAR PROMPT ]"}
                                                       </button>
-                                                      <pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-yellow-400 overflow-x-auto overflow-y-auto max-h-64 select-text">
+
+                                                      <div className="absolute top-2 left-2 z-10 pointer-events-none lg:hidden flex items-center gap-1.5 bg-[#03070D]/80 px-2 py-1 rounded-[1px] border border-white/10 opacity-90 animate-pulse">
+                                                         <span className="text-[7.5px] uppercase font-bold text-white/60 tracking-widest">ARRASTE PARA LER</span>
+                                                         <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                                                      </div>
+
+<pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-yellow-400 overflow-x-auto overflow-y-auto max-h-64 select-text">
                                                         <code>
 {`Using the current code, completely change the visual identity to match the Millionaire Move logo and style:
 - Logo: "MILLIONAIRE MOVE" in bold golden 3D style
@@ -928,7 +959,13 @@ Rewrite the full code with the exact new visual identity.`}
                                                       >
                                                         {copiedId === 'pack-05' ? "[ COPIADO✓ ]" : "[ COPIAR PROMPT ]"}
                                                       </button>
-                                                      <pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-orange-400 overflow-x-auto overflow-y-auto max-h-64 select-text">
+
+                                                      <div className="absolute top-2 left-2 z-10 pointer-events-none lg:hidden flex items-center gap-1.5 bg-[#03070D]/80 px-2 py-1 rounded-[1px] border border-white/10 opacity-90 animate-pulse">
+                                                         <span className="text-[7.5px] uppercase font-bold text-white/60 tracking-widest">ARRASTE PARA LER</span>
+                                                         <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                                                      </div>
+
+<pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-orange-400 overflow-x-auto overflow-y-auto max-h-64 select-text">
                                                         <code>
 {`Using the current code, restructure the visual identity to match exactly the MGI / Malate poster:
 - Logo: MGI with airplane and "IMPORTAÇÕES"
@@ -1058,7 +1095,13 @@ Rewrite the full code with the exact new visual identity from the poster.`}
                                                       >
                                                         {copiedId === 'vfx-template-1' ? "[ COPIADO✓ ]" : "[ COPIAR PROMPT ]"}
                                                       </button>
-                                                      <pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-[#00F0FF] overflow-x-auto overflow-y-auto max-h-64 select-text">
+
+                                                      <div className="absolute top-2 left-2 z-10 pointer-events-none lg:hidden flex items-center gap-1.5 bg-[#03070D]/80 px-2 py-1 rounded-[1px] border border-white/10 opacity-90 animate-pulse">
+                                                         <span className="text-[7.5px] uppercase font-bold text-white/60 tracking-widest">ARRASTE PARA LER</span>
+                                                         <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                                                      </div>
+
+<pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-[#00F0FF] overflow-x-auto overflow-y-auto max-h-64 select-text">
                                                         <code>
 {`/imagine prompt: Award-winning high-fashion editorial photography, flawless VFX-grade digital composite. Transfer the EXACT SOURCE IDENTITY from [LINK IMAGE PERSONAL] onto the composition, pose, and proportions of the BASE IMAGE from [LINK IMAGEM BASE].
 
@@ -1090,7 +1133,13 @@ CRITICAL VFX & ADAPTATION PROTOCOLS:
                                                       >
                                                         {copiedId === 'vfx-template-2' ? "[ COPIADO✓ ]" : "[ COPIAR PROMPT ]"}
                                                       </button>
-                                                      <pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-red-400 overflow-x-auto overflow-y-auto max-h-64 select-text">
+
+                                                      <div className="absolute top-2 left-2 z-10 pointer-events-none lg:hidden flex items-center gap-1.5 bg-[#03070D]/80 px-2 py-1 rounded-[1px] border border-white/10 opacity-90 animate-pulse">
+                                                         <span className="text-[7.5px] uppercase font-bold text-white/60 tracking-widest">ARRASTE PARA LER</span>
+                                                         <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                                                      </div>
+
+<pre className="p-3 bg-black border border-white/5 rounded-[1px] text-[11.5px] sm:text-[12px] leading-relaxed text-red-400 overflow-x-auto overflow-y-auto max-h-64 select-text">
                                                         <code>
 {`/imagine prompt: Award-winning high-fashion editorial photography, flawless VFX-grade digital composite. Transfer the EXACT SOURCE IDENTITY from [LINK IMAGE PERSONAL] onto the composition of the BASE IMAGE from [LINK IMAGEM BASE].
 
@@ -1358,20 +1407,20 @@ CRITICAL OCCLUSION & DEPTH PROTOCOLS:
                               <span>SELECIONE UM MODELO IA</span>
                               <span className="text-orange-500 font-bold">[{filteredModels.length}]</span>
                             </div>
-                            <div className="flex-1 flex flex-col gap-1.5 overflow-visible lg:overflow-y-auto custom-scroll pr-1">
+                            <div className="flex-1 flex flex-col gap-1.5 overflow-hidden lg:overflow-y-auto custom-scroll pr-1">
                               {filteredModels.map((model) => {
                                 const isSelected = selectedModelId === model.id;
                                 return (
                                   <button
                                     key={model.id}
                                     onClick={() => { runModelPlaygroundDemo(model.id, 'code_design'); setMobileViewMode('detail'); document.querySelector('.terminal-modal')?.scrollTo({top: 0, behavior: 'smooth'}); }}
-                                    className={`relative p-3 sm:p-2 border text-left flex items-center gap-2 rounded-[2px] transition-all duration-150 active:scale-98 select-target ${
+                                    className={`relative p-3 sm:p-2 w-full min-w-0 overflow-hidden border text-left flex items-center gap-2 rounded-[2px] transition-all duration-150 active:scale-98 select-target ${
                                       isSelected
                                         ? 'border-[#FF4500] bg-gradient-to-r from-[#FF4500]/10 to-orange-500/5'
                                         : 'border-white/5 bg-black/35 hover:border-white/10 hover:bg-black/50 text-white/50'
                                     }`}
                                   >
-                                    <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[10px] font-bold ${
+                                    <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
                                       isSelected ? 'border-[#FF4500] bg-[#FF4500]/10 text-[#FF4500]' : 'border-white/10 bg-white/5 text-white/40'
                                     }`}>
                                       {model.name.includes("Claude") ? "Cl" : model.name.includes("Gemini") ? "Ge" : model.name.includes("GPT") ? "GP" : model.name.includes("Flux") ? "Fl" : "IA"}

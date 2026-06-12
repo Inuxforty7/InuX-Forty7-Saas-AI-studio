@@ -14,8 +14,8 @@ export default defineConfig(({mode}) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
         manifest: {
-          name: 'Nexus Terminal PWA',
-          short_name: 'Nexus',
+          name: 'INUX FORTY7 - Ecossistema AI',
+          short_name: 'INUX FORTY7',
           description: 'Terminal AI Ecosystem & Workflows',
           theme_color: '#03070D',
           background_color: '#03070D',
